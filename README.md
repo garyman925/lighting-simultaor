@@ -2,26 +2,6 @@
 
 可執行的 **Vertical Slice 02 — Studio Editor**（保留 Slice 01）。啟動即載入 Portrait Lighting Scene：一名原創程序式 humanoid、一台 full-frame 相機、120 × 120cm Softbox 及無縫背景。無帳戶、後端或外部角色下載。
 
-## 啟動
-
-需求：Node.js **22.12+**、支援 WebGL 2 的桌面瀏覽器。建議視窗 1280 × 720 以上，開啟硬體加速。
-
-```sh
-npm ci
-npm run dev
-```
-
-開啟 **http://127.0.0.1:5173/lighting-simultaor/**。伺服器只監聽本機。Windows 亦可雙擊 `START.cmd`，使用標準 Node.js 安裝的 npm。若 5173 已有此應用執行，直接開網址即可，不需再次啟動。
-
-更新依賴時可使用（並提交更新後的 package-lock.json）：
-
-```sh
-npm install
-npm run dev
-```
-
-若 Windows 的 npm 指令指向失效的 roaming 安裝，可使用 `"C:\Program Files\nodejs\npm.cmd"` 或 `START.cmd`。
-
 ## 第一個實驗
 
 1. 在右側選取 **Key light**（120cm Softbox），或直接點擊 Studio View 內的燈具。
@@ -133,17 +113,3 @@ npm run build
 npm run preview
 ```
 
-打開 http://127.0.0.1:4173/lighting-simultaor/ 。GitHub Pages 只提供靜態檔案，瀏覽器需支援 WebGL 2。
-
-## 受限 Windows 環境的本機驗證
-
-若預設 esbuild config loader 因 Windows 上層目錄讀取權限失敗，可使用 Vite 自帶 runner（不需改系統權限）：
-
-```sh
-npm run typecheck
-npm test -- --configLoader runner
-npm run build -- --configLoader runner
-npm run preview -- --configLoader runner
-```
-
-本輪使用正式 production bundle 的 preview server 做瀏覽器測試。這台環境的 dev dependency optimizer 仍受上層目錄權限影響；一般本機環境及既有 GitHub Actions 仍使用原有 npm scripts。詳見 `tests/VERIFICATION.md` 的 Slice 02 紀錄。
