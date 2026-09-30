@@ -113,3 +113,17 @@ npm run build
 npm run preview
 ```
 
+
+## Vertical Slice 03 — Equipment Library
+
+Seven generic modifiers are available through **Add Light → Modifier / Size → Add to Studio** and the selected light's Inspector: Bare Reflector, Rectangular Softbox, Octabox, Stripbox, Beauty Dish, Umbrella and Snoot. Beauty Dish supports 42/55/70cm. The hierarchy shows the selected equipment, physical dimensions and Grid accessory. Original light lifecycle controls, transforms, navigation, exposure and the Three-Light Preset remain available.
+
+`src/domain/equipment.ts` owns definitions, size presets, optical parameters, accessory compatibility and reserved manufacturer/model/calibration metadata. All definitions are generic and uncalibrated. Grid is an accessory; incompatible equipment removes it when switching. Schema v2 records equipment IDs, dimensions and accessories. `migrateScene` upgrades the existing v1 softbox documents while preserving exposure, transforms and custom dimensions. Export emits v2; interactive file import/save is still outside this slice.
+
+Rendering reuses the nine-light shadow pool and accumulates eight aperture passes (72 samples per fixture) in linear HDR. Rectangle/strip samples span their physical width and height; octagonal samples follow polygon boundaries; Beauty Dish uses an annular aperture around the deflector; umbrella samples use a shallow curved surface; reflector/snoot use smaller circular apertures. Each definition supplies a beam angle, penumbra and relative gain. Grid multiplies beam width by 0.4 and transmission by 0.78. Physical size changes sample separation and therefore actual occlusion/penumbrae. Studio equipment geometry is generated separately and updated only when modifier data changes.
+
+**Soft Portrait**, **Beauty Portrait** and **Dramatic Strip / Rim** replace only the lights, preserving the current camera, exposure, model and background. They are intentionally distinct lighting arrangements, not a calibrated same-power comparison. Change the Inspector modifier on a single unchanged light for a controlled optical comparison.
+
+Limitations: geometric direct-light approximation, not measured lux, spectral transport or a commercial product match. Angular profiles use spotlight cones/penumbrae; no measured IES profiles, interreflection, transmission or detailed umbrella fabric scattering. Fixed sample counts can leave grain/banding, especially in the nine-sample Studio view. Equipment remains hidden in Camera Preview and does not occlude other lights. Equal-depth light accumulation currently targets opaque materials. Ten mixed lights were interactively checked on this machine; CPU submission time is not a GPU FPS claim.
+
+**Catchlight / VS04 blocker:** the current small, rough procedural eyes lack a corneal reflection model. No fake eye overlay was added. `catchlightDescriptor` exposes shape, physical dimensions, central occlusion, Grid and aperture samples to a future corneal reflection adapter; it is also attached to equipment renderer metadata. Implement proper eyes/cornea and reflection visibility before claiming modifier-shaped catchlights.

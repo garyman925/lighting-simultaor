@@ -1,3 +1,5 @@
+import { apertureSamples, opticalParameters, catchlightDescriptor } from '../domain/equipment';
+import { makeEquipmentVisual } from './equipmentVisual';
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -97,14 +99,9 @@ export class StudioRenderer {
   private listen(target:EventTarget,type:string,fn:EventListener){target.addEventListener(type,fn);this.disposers.push(()=>target.removeEventListener(type,fn));}
   private object(s:Selection){return s==='camera'?this.cameraRig:s==='model'?this.human.root:this.rigs.get(s)?.root;}
   private mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){const o=new T.Mesh(g,m);parent.add(o);return o;}
-  private makeSoftbox(){
+  private makeRig(){
     const root=new T.Group(),visual=new T.Group(),stand=new T.Group();root.add(visual);
     const dark=new T.MeshStandardMaterial({color:'#23292c',roughness:.72});
-    const diffuser=new T.MeshBasicMaterial({color:'#faf1dc',side:T.DoubleSide,toneMapped:false});
-    // Local -Z is the emitter direction. Equipment geometry never shadows its own emitter samples.
-    const casing=this.mesh(new T.CylinderGeometry(.49,.70,.32,4,1,true),dark,visual);casing.rotation.x=Math.PI/2;casing.rotation.y=Math.PI/4;casing.position.z=.16;
-    const plane=this.mesh(new T.PlaneGeometry(1,1),diffuser,visual);plane.rotation.y=Math.PI;plane.position.z=-.008;
-    const edge=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(1.018,1.018,.028)),new T.LineBasicMaterial({color:0xd0b077}));visual.add(edge);
     const rod=this.mesh(new T.CylinderGeometry(.015,.022,1,12),dark,stand);rod.name='rod';
     for(let i=0;i<3;i++){const leg=this.mesh(new T.BoxGeometry(.025,.025,.62),dark,stand);leg.rotation.y=i*Math.PI*2/3;leg.position.set(Math.sin(leg.rotation.y)*.24,.035,Math.cos(leg.rotation.y)*.24);}
     this.scene.add(root,stand);return {root,visual,stand};
@@ -135,9 +132,13 @@ export class StudioRenderer {
       this.disposeObject(rig.root);this.disposeObject(rig.stand);this.rigs.delete(id);
     }
     for(const light of s.lights){
-      let rig=this.rigs.get(light.id);if(!rig){rig=this.makeSoftbox();this.rigs.set(light.id,rig);}
+      let rig=this.rigs.get(light.id);if(!rig){rig=this.makeRig();this.rigs.set(light.id,rig);}
       rig.root.position.fromArray(light.transform.positionM);rig.root.quaternion.fromArray(light.transform.quaternion);
-      rig.visual.scale.set(light.modifier.widthM,light.modifier.heightM,1);
+      const signature=JSON.stringify(light.modifier);
+      if(rig.visual.userData.signature!==signature){
+        this.disposeObject(rig.visual);rig.visual=makeEquipmentVisual(light.modifier);
+        rig.visual.userData.signature=signature;rig.visual.userData.catchlight=catchlightDescriptor(light.modifier);rig.root.add(rig.visual);
+      }
       rig.stand.position.set(rig.root.position.x,0,rig.root.position.z);
       const rod=rig.stand.getObjectByName('rod')!;rod.scale.y=Math.max(.1,rig.root.position.y);rod.position.y=rig.root.position.y/2;
       rig.root.updateMatrixWorld(true);
@@ -164,13 +165,13 @@ export class StudioRenderer {
   }
   private positionSamples(light:LightSpec|undefined,jitter:number[]){
     const rig=light?this.rigs.get(light.id):undefined;
+    const samples=light?apertureSamples(light.modifier,jitter):[],optics=light?opticalParameters(light.modifier):null;
     this.lights.forEach((l,i)=>{
-      if(!light||!rig){l.intensity=0;return;}
-      const x=((i%3+.5+jitter[0])/3-.5)*light.modifier.widthM;
-      const y=((Math.floor(i/3)+.5+jitter[1])/3-.5)*light.modifier.heightM;
-      const pos=new T.Vector3(x,y,-.035).applyMatrix4(rig.root.matrixWorld);
-      l.position.copy(pos);this.targets[i].position.copy(pos).add(new T.Vector3(0,0,-1).applyQuaternion(rig.root.quaternion));
-      l.color.copy(kelvin(light.source.temperatureK));l.intensity=3.8*exposure(this.document.camera,light.source.mode)*sourcePower(light)/9;
+      if(!light||!rig||!optics){l.intensity=0;return;}
+      const sample=samples[i];
+      const pos=new T.Vector3(...sample.position).applyMatrix4(rig.root.matrixWorld);
+      l.angle=optics.spreadDeg*Math.PI/360;l.penumbra=optics.penumbra;      l.position.copy(pos);this.targets[i].position.copy(pos).add(new T.Vector3(0,0,-1).applyQuaternion(rig.root.quaternion));
+      l.color.copy(kelvin(light.source.temperatureK));l.intensity=3.8*exposure(this.document.camera,light.source.mode)*sourcePower(light)*sample.weight*optics.gain;
     });
   }
   /** Reuse nine shadow maps for any fixture count. Sum direct light in linear HDR before tone mapping.

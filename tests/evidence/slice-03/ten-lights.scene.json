@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 2,
+  "id": "portrait-01",
+  "name": "Portrait study",
+  "units": "m",
+  "catalogVersion": "generic-equipment-1",
+  "createdAt": "2026-09-30T00:00:00Z",
+  "updatedAt": "2026-09-30T07:37:50.194Z",
+  "camera": {
+    "id": "camera-01",
+    "transform": {
+      "positionM": [
+        0,
+        1.38,
+        3.4
+      ],
+      "quaternion": [
+        -0.023509899668670918,
+        0,
+        0,
+        0.9997236041114409
+      ]
+    },
+    "sensorWidthMm": 36,
+    "sensorHeightMm": 24,
+    "focalLengthMm": 50,
+    "fNumber": 4,
+    "shutterSeconds": 0.008,
+    "iso": 200,
+    "whiteBalanceK": 5600,
+    "exposureCompEv": 0
+  },
+  "model": {
+    "id": "model-01",
+    "assetId": "human-base-01",
+    "transform": {
+      "positionM": [
+        0,
+        0,
+        0
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "heightCm": 175,
+    "bodyPreset": "regular",
+    "skinColor": "#BD8867",
+    "hairStyle": "short",
+    "hairColor": "#201916"
+  },
+  "lights": [
+    {
+      "id": "light-key",
+      "name": "Key light",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          -1.25,
+          2.15,
+          1.3
+        ],
+        "quaternion": [
+          -0.18160399590856438,
+          -0.3663784837952448,
+          -0.07314556829343477,
+          0.9096353781164023
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 70,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "snoot",
+        "sizeId": "6",
+        "widthM": 0.06,
+        "heightM": 0.06,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-c9a0905b-4294-4fa4-bacd-c546584ea0fc",
+      "name": "Test reflector",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "reflector",
+        "sizeId": "18",
+        "widthM": 0.18,
+        "heightM": 0.18,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-19a43e1f-4065-43af-9913-7da6fb850449",
+      "name": "Test softbox",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "softbox",
+        "sizeId": "60x90",
+        "widthM": 0.6,
+        "heightM": 0.9,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-0cc6dbaf-b951-426b-9c88-b5e4d3c97404",
+      "name": "Test octabox",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "octabox",
+        "sizeId": "90",
+        "widthM": 0.9,
+        "heightM": 0.9,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-dcc5ad1f-5b6b-4bc0-b197-b768f71a27b3",
+      "name": "Test stripbox",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "stripbox",
+        "sizeId": "30x120",
+        "widthM": 0.3,
+        "heightM": 1.2,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-f6a8d223-f1d3-4f4d-961f-ddf2efba6743",
+      "name": "Test beauty-dish",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "beauty-dish",
+        "sizeId": "42",
+        "widthM": 0.42,
+        "heightM": 0.42,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-48fe04c3-cd4e-4cb4-afa2-61ce931b45e6",
+      "name": "Test umbrella",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "umbrella",
+        "sizeId": "85",
+        "widthM": 0.85,
+        "heightM": 0.85,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-36ae9989-e698-4211-957e-21ac92f3abb5",
+      "name": "Test snoot",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "snoot",
+        "sizeId": "6",
+        "widthM": 0.06,
+        "heightM": 0.06,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-f62e0302-0f96-4951-aba8-1dfea8111f70",
+      "name": "Test snoot copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.9000000000000001,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "snoot",
+        "sizeId": "6",
+        "widthM": 0.06,
+        "heightM": 0.06,
+        "accessories": []
+      }
+    },
+    {
+      "id": "light-b44ccbb8-a7b8-4117-9170-89fce2853e58",
+      "name": "Test snoot copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          2.1,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.12743762567456804,
+          0.42546970540947354,
+          0.06065655143134131,
+          0.8938993031151
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 30,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "snoot",
+        "sizeId": "6",
+        "widthM": 0.06,
+        "heightM": 0.06,
+        "accessories": []
+      }
+    }
+  ],
+  "environment": {
+    "backgroundColor": "#887b6f",
+    "floorColor": "#887b6f",
+    "floorFollowsBackground": true,
+    "widthM": 8,
+    "heightM": 5,
+    "depthM": 10,
+    "curveRadiusM": 1
+  },
+  "render": {
+    "quality": "balanced",
+    "previewMode": "capture",
+    "seed": 42
+  }
+}

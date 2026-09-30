@@ -1,0 +1,29 @@
+{
+  "checks": [
+    "Beauty Dish 42cm preview",
+    "Beauty Dish 55cm preview",
+    "Beauty Dish 70cm preview",
+    "Inspector switch reflector",
+    "Inspector switch softbox",
+    "Inspector switch octabox",
+    "Inspector switch stripbox",
+    "Inspector switch beauty-dish",
+    "Inspector switch umbrella",
+    "Inspector switch snoot",
+    "reflector: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "softbox: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "octabox: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "stripbox: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "beauty-dish: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "umbrella: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "snoot: add/select/rename/move/rotate/disable/enable/duplicate/delete/aim passed",
+    "10 mixed lights: transform and Top view respond; export preserves all 10",
+    "Orbit / Shift-pan / wheel zoom / Reset View",
+    "Move gizmo changed X -1.25 to -1.05; rotation ring drag",
+    "ISO/aperture/shutter/four lenses/background/camera position and rotation",
+    "Model height/turn, color temperature, continuous power, legacy custom softbox size, flash sync/shutter, three-light preset, empty scene and re-add",
+    "All three presets preserve edited 85mm / ISO400",
+    "Final-build rotation gizmo changed Rotation X from -29.98 to 48.97"
+  ],
+  "console": []
+}

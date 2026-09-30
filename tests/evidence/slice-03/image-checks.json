@@ -1,0 +1,32 @@
+[
+  {
+    "a": "compare-dish-70",
+    "b": "compare-grid",
+    "mean_rgb_absolute_difference": 14.862032639831147
+  },
+  {
+    "a": "compare-dish-42",
+    "b": "compare-dish-70",
+    "mean_rgb_absolute_difference": 0.7237543343886627
+  },
+  {
+    "a": "compare-softbox",
+    "b": "compare-octabox",
+    "mean_rgb_absolute_difference": 4.782839589929142
+  },
+  {
+    "a": "compare-softbox",
+    "b": "compare-stripbox",
+    "mean_rgb_absolute_difference": 8.132521106588271
+  },
+  {
+    "a": "compare-Soft",
+    "b": "compare-Beauty",
+    "mean_rgb_absolute_difference": 11.722452133273029
+  },
+  {
+    "a": "compare-Beauty",
+    "b": "compare-Dramatic",
+    "mean_rgb_absolute_difference": 35.06414706769184
+  }
+]

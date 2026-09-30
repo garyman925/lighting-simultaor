@@ -1,3 +1,5 @@
+import { makeModifier, switchModifier, withGrid } from './equipment';
+import type { ModifierSpec } from './equipment';
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number];
 export type Selection = 'camera' | 'model' | `light-${string}`;
@@ -5,7 +7,7 @@ export type StudioView = 'Perspective' | 'Top' | 'Front' | 'Side';
 export interface LightSpec {
   id: `light-${string}`; name: string; enabled: boolean; fixtureId: string; transform: Transform;
   source: { mode: 'continuous'; dimmerPercent: number; temperatureK: number } | { mode: 'strobe'; powerEv: number; temperatureK: number };
-  modifier: { presetId: 'softbox-120'; widthM: number; heightM: number; gridId: null };
+  modifier: ModifierSpec;
 }
 export interface Transform { positionM: Vec3; quaternion: Quat }
 export interface CameraSpec {
@@ -14,7 +16,7 @@ export interface CameraSpec {
   whiteBalanceK: number; exposureCompEv: number;
 }
 export interface SceneDocument {
-  schemaVersion: 1; id: string; name: string; units: 'm'; catalogVersion: string;
+  schemaVersion: 2; id: string; name: string; units: 'm'; catalogVersion: string;
   createdAt: string; updatedAt: string;
   model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; hairStyle: string; hairColor: string };
   camera: CameraSpec;
@@ -49,10 +51,10 @@ export function lookAt(position: Vec3, target: Vec3): Quat {
 export function makePortraitScene(): SceneDocument {
   const cam:Vec3=[0,1.38,3.4], light:Vec3=[-1.25,2.15,1.3];
   return {
-    schemaVersion:1,id:'portrait-01',name:'Portrait study',units:'m',catalogVersion:'mvp-generic-1',createdAt:'2026-09-30T00:00:00Z',updatedAt:'2026-09-30T00:00:00Z',
+    schemaVersion:2,id:'portrait-01',name:'Portrait study',units:'m',catalogVersion:'generic-equipment-1',createdAt:'2026-09-30T00:00:00Z',updatedAt:'2026-09-30T00:00:00Z',
     camera:{id:'camera-01',transform:{positionM:cam,quaternion:lookAt(cam,[0,1.22,0])},sensorWidthMm:36,sensorHeightMm:24,focalLengthMm:50,fNumber:4,shutterSeconds:1/125,iso:200,whiteBalanceK:5600,exposureCompEv:0},
     model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',hairStyle:'short',hairColor:'#201916'},
-    lights:[{id:'light-key',name:'Key light',enabled:true,fixtureId:'generic-led-200',transform:{positionM:light,quaternion:lookAt(light,[0,1.4,0])},source:{mode:'continuous',dimmerPercent:70,temperatureK:5600},modifier:{presetId:'softbox-120',widthM:1.2,heightM:1.2,gridId:null}}],
+    lights:[{id:'light-key',name:'Key light',enabled:true,fixtureId:'generic-led-200',transform:{positionM:light,quaternion:lookAt(light,[0,1.4,0])},source:{mode:'continuous',dimmerPercent:70,temperatureK:5600},modifier:makeModifier('softbox','120x120')}],
     environment:{backgroundColor:'#887b6f',floorColor:'#887b6f',floorFollowsBackground:true,widthM:8,heightM:5,depthM:10,curveRadiusM:1},
     render:{quality:'balanced',previewMode:'capture',seed:42},
   };
@@ -80,7 +82,7 @@ export function hasStrobe(s:SceneDocument){return s.lights.some(l=>l.enabled&&l.
 export function makeThreeLightScene():SceneDocument {
   let s=makePortraitScene();s.name='Three-light portrait';s=addLight(s,'light-fill');s=addLight(s,'light-rim');
   s.lights[0].name='Key Light';s.lights[1].name='Fill Light';s.lights[1].source={mode:'continuous',dimmerPercent:22,temperatureK:5600};
-  const rim=s.lights[2];rim.name='Rim Light';rim.transform.positionM=[.8,2.2,-1.2];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.45,0]);rim.modifier.widthM=.6;rim.modifier.heightM=.6;rim.source={mode:'continuous',dimmerPercent:45,temperatureK:5600};return s;
+  const rim=s.lights[2];rim.name='Rim Light';rim.transform.positionM=[.8,2.2,-1.2];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.45,0]);rim.modifier.widthM=.6;rim.modifier.heightM=.6;rim.modifier.sizeId='custom';rim.source={mode:'continuous',dimmerPercent:45,temperatureK:5600};return s;
 }
 /** Uniform strata conserve total source energy while the physical aperture changes. */
 export function emitterSamples(size: number, count=3) {
@@ -90,4 +92,32 @@ export function emitterSamples(size: number, count=3) {
 }
 export function sourcePower(l: LightSpec) {
   return !l.enabled?0:l.source.mode==='continuous'?l.source.dimmerPercent/100:2**l.source.powerEv;
+}
+
+export type LightingPreset='soft'|'beauty'|'dramatic';
+export function makeEquipmentScene(preset:LightingPreset):SceneDocument {
+  let s=makePortraitScene();const key=s.lights[0];key.name='Key Light';
+  if(preset==='soft'){s.name='Soft Portrait';key.modifier=makeModifier('softbox','120x180');}
+  if(preset==='beauty'){
+    s.name='Beauty Portrait';key.modifier=makeModifier('beauty-dish','55');key.transform.positionM=[-.45,2.05,1.3];key.transform.quaternion=lookAt(key.transform.positionM,[0,1.5,0]);
+    s=addLight(s,'light-fill');s.lights[1].name='Fill Light';s.lights[1].modifier=makeModifier('umbrella','105');s.lights[1].source={mode:'continuous',dimmerPercent:12,temperatureK:5600};
+  }
+  if(preset==='dramatic'){
+    s.name='Dramatic Strip / Rim';key.modifier=withGrid(makeModifier('stripbox','30x120'),true);key.transform.positionM=[-1.15,1.75,.35];key.transform.quaternion=lookAt(key.transform.positionM,[0,1.4,0]);
+    s=addLight(s,'light-rim');const rim=s.lights[1];rim.name='Rim Light';rim.modifier=withGrid(makeModifier('stripbox','40x180'),true);rim.transform.positionM=[.8,1.8,-.8];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.4,0]);rim.source={mode:'continuous',dimmerPercent:55,temperatureK:5600};
+  }
+  return s;
+}
+/** Explicit v1 adapter preserves custom apertures and transforms; no renderer objects enter JSON. */
+export function migrateScene(input:unknown):SceneDocument {
+  const s=structuredClone(input) as SceneDocument & {schemaVersion:number};
+  if(!s||![1,2].includes(s.schemaVersion)||!Array.isArray(s.lights))throw new Error('Unsupported scene schema');
+  s.lights=s.lights.map(l=>{
+    const m=l.modifier as unknown as ModifierSpec & {presetId?:string;gridId?:string|null};
+    if(!m.equipmentId){if(m.presetId!=='softbox-120')throw new Error('Unknown legacy modifier');return {...l,modifier:{...makeModifier('softbox','120x120'),widthM:m.widthM,heightM:m.heightM,sizeId:'custom'}};}
+    const next=switchModifier(m,m.equipmentId,m.sizeId);
+    if(!Number.isFinite(m.widthM)||!Number.isFinite(m.heightM)||m.widthM<=0||m.heightM<=0)throw new Error('Invalid aperture');
+    return {...l,modifier:{...next,widthM:m.widthM,heightM:m.heightM,sizeId:m.sizeId}};
+  });
+  s.schemaVersion=2;s.catalogVersion='generic-equipment-1';return s;
 }

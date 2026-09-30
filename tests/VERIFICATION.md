@@ -63,3 +63,14 @@ Camera Preview 支援時以 72 樣本收斂；Studio View 為 9 樣本。暖機�
 效能：固定九個 SpotLight / shadow map 池，逐燈線性加色；slider 不重建 scene。十燈測試暖機後介面曾顯示 5.3ms CPU submission；三燈約 1.7–5.1ms。不是 GPU FPS 或 p95 數據；首次 shader 編譯更慢。停下後八批次收斂即停止 render loop。未做跨 GPU 長時間壓力測試；RGBA8 fallback 未在真實不支援 float targets 的硬體上測試。
 
 已知界線：透明／透射材質尚不適用目前 equal-depth 加色策略。設備只顯示於 Studio View；Preview 聚焦人物與背景。Save/load、Undo/Redo、寫實人體、真實器材校正保持後續範圍。
+
+## Vertical Slice 03 — 2026-09-30
+
+- Existing repository/history retained. Remote README-only commits merged without force-push. VS02 (85bf9a9/c7d3fe8) plus merge 924e0c3 pushed; Actions run 36683977623 succeeded.
+- 32/32 automated tests pass: original 17 + 15 catalog/lifecycle/aperture/grid/geometry/preset/migration tests. TypeScript and production Vite build succeed. Windows sandbox requires `--configLoader runner`; CI retains standard npm scripts.
+- Browser verification uses the actual production bundle at port 4174. All seven modifiers added via chooser, selected, renamed, translated, rotated, disabled/re-enabled, duplicated/deleted and aimed. Mixed eight- and ten-light scenes verified, including ten-light export and view/transform interaction. Ten-light settled status reported 6.4 ms CPU submission average; this is not measured GPU FPS.
+- Inspector switches all seven geometries. Beauty Dish 42/55/70 and Grid tested. Generated geometry bounds and sampling vary with every catalog size in automated tests. Unsupported Grid is removed when switching equipment.
+- All three preset scenes visibly differ. Browser also verifies edited 85mm/ISO400 survive all preset switches. Unit tests verify identical initial model/environment/camera.
+- VS01/02 browser regression: four views, orbit, Shift-pan, wheel zoom, reset view, translation gizmo (X -1.25 → -1.05), rotation ring (X -29.98 → 48.97), camera position/rotation, model height/turn, four focal lengths, aperture/ISO/shutter, background HEX, temperature, zero/full power, custom Softbox 30/180cm, strobe sync clamp (1/200) and disabled faster speeds, strobe shutter changes, original three-light preset, delete-to-zero and re-add. No runtime errors or warnings captured.
+- Evidence: `tests/evidence/slice-03/`. `browser-checks.json` records operations; `ten-lights.scene.json` preserves mixed equipment; aligned full-page screenshots and `crop-rectangles.json` isolate the Camera Preview. `image-checks.json` records mean absolute RGB differences (0–255): dish Grid 14.86; dish 42 vs70 0.72; Softbox vs Octabox 4.78; Softbox vs Stripbox 8.13; Soft vs Beauty preset 11.72; Beauty vs Dramatic 35.06. Pixel difference is a change detector, not a photometric accuracy measurement. Dish size effects are subtle at this full-body framing.
+- Final production rebuild reloaded and rechecked for dish 70/Grid, preset exposure isolation and gizmo rotation. Catchlight deliberately deferred with renderer metadata; no overlay. See README for approximations and VS04 blocker.
