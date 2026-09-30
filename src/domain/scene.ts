@@ -1,6 +1,12 @@
 export type Vec3 = [number, number, number];
 export type Quat = [number, number, number, number];
-export type Selection = 'softbox' | 'camera' | 'model';
+export type Selection = 'camera' | 'model' | `light-${string}`;
+export type StudioView = 'Perspective' | 'Top' | 'Front' | 'Side';
+export interface LightSpec {
+  id: `light-${string}`; name: string; enabled: boolean; fixtureId: string; transform: Transform;
+  source: { mode: 'continuous'; dimmerPercent: number; temperatureK: number } | { mode: 'strobe'; powerEv: number; temperatureK: number };
+  modifier: { presetId: 'softbox-120'; widthM: number; heightM: number; gridId: null };
+}
 export interface Transform { positionM: Vec3; quaternion: Quat }
 export interface CameraSpec {
   id: string; transform: Transform; sensorWidthMm: number; sensorHeightMm: number;
@@ -12,9 +18,7 @@ export interface SceneDocument {
   createdAt: string; updatedAt: string;
   model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; hairStyle: string; hairColor: string };
   camera: CameraSpec;
-  lights: [{ id: string; name: string; enabled: boolean; fixtureId: string; transform: Transform;
-    source: { mode: 'continuous'; dimmerPercent: number; temperatureK: number } | { mode: 'strobe'; powerEv: number; temperatureK: number };
-    modifier: { presetId: 'softbox-120'; widthM: number; heightM: number; gridId: null } }];
+  lights: LightSpec[];
   environment: { backgroundColor: string; floorColor: string; floorFollowsBackground: boolean; widthM: number; heightM: number; depthM: number; curveRadiusM: number };
   render: { quality: 'balanced' | 'low'; previewMode: 'capture'; seed: number };
 }
@@ -53,9 +57,30 @@ export function makePortraitScene(): SceneDocument {
     render:{quality:'balanced',previewMode:'capture',seed:42},
   };
 }
-export function getTransform(s: SceneDocument, selected: Selection): Transform { return selected==='softbox'? s.lights[0].transform : s[selected].transform; }
+export function getTransform(s: SceneDocument, selected: Selection): Transform { return selected==='camera'||selected==='model'?s[selected].transform:s.lights.find(l=>l.id===selected)?.transform??s.model.transform; }
 export function withTransform(s: SceneDocument, selected: Selection, t: Transform): SceneDocument {
-  return selected==='softbox' ? {...s,lights:[{...s.lights[0],transform:t}]} : {...s,[selected]:{...s[selected],transform:t}};
+  return selected==='camera'||selected==='model' ? {...s,[selected]:{...s[selected],transform:t}} : updateLight(s,selected,{transform:t});
+}
+export function updateLight(s:SceneDocument,id:LightSpec['id'],patch:Partial<Omit<LightSpec,'id'>>):SceneDocument {
+  return {...s,lights:s.lights.map(l=>l.id===id?{...l,...patch}:l)};
+}
+export function addLight(s:SceneDocument,id:LightSpec['id']=`light-${crypto.randomUUID()}`):SceneDocument {
+  const l=structuredClone(makePortraitScene().lights[0]);l.id=id;l.name=`Light ${s.lights.length+1}`;
+  let suffix=s.lights.length+1;while(s.lights.some(existing=>existing.name===l.name))l.name=`Light ${++suffix}`;
+  l.transform.positionM=[1.4,2,1.3];l.transform.quaternion=lookAt(l.transform.positionM,[0,1.4,0]);
+  l.source={mode:'continuous',dimmerPercent:30,temperatureK:5600};return {...s,lights:[...s.lights,l]};
+}
+export function duplicateLight(s:SceneDocument,id:LightSpec['id'],newId:LightSpec['id']=`light-${crypto.randomUUID()}`):SceneDocument {
+  const source=s.lights.find(l=>l.id===id);if(!source)return s;
+  const copy=structuredClone(source);copy.id=newId;copy.name=`${source.name} copy`;copy.transform.positionM[0]=Math.min(4,copy.transform.positionM[0]+.3);
+  return {...s,lights:[...s.lights,copy]};
+}
+export function deleteLight(s:SceneDocument,id:LightSpec['id']):SceneDocument {return {...s,lights:s.lights.filter(l=>l.id!==id)};}
+export function hasStrobe(s:SceneDocument){return s.lights.some(l=>l.enabled&&l.source.mode==='strobe');}
+export function makeThreeLightScene():SceneDocument {
+  let s=makePortraitScene();s.name='Three-light portrait';s=addLight(s,'light-fill');s=addLight(s,'light-rim');
+  s.lights[0].name='Key Light';s.lights[1].name='Fill Light';s.lights[1].source={mode:'continuous',dimmerPercent:22,temperatureK:5600};
+  const rim=s.lights[2];rim.name='Rim Light';rim.transform.positionM=[.8,2.2,-1.2];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.45,0]);rim.modifier.widthM=.6;rim.modifier.heightM=.6;rim.source={mode:'continuous',dimmerPercent:45,temperatureK:5600};return s;
 }
 /** Uniform strata conserve total source energy while the physical aperture changes. */
 export function emitterSamples(size: number, count=3) {
@@ -63,6 +88,6 @@ export function emitterSamples(size: number, count=3) {
   for(let y=0;y<count;y++) for(let x=0;x<count;x++) result.push({position:[((x+.5)/count-.5)*size,((y+.5)/count-.5)*size,-.035],weight:1/(count*count)});
   return result;
 }
-export function sourcePower(s: SceneDocument) {
-  const l=s.lights[0]; return !l.enabled?0:l.source.mode==='continuous'?l.source.dimmerPercent/100:2**l.source.powerEv;
+export function sourcePower(l: LightSpec) {
+  return !l.enabled?0:l.source.mode==='continuous'?l.source.dimmerPercent/100:2**l.source.powerEv;
 }
