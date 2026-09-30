@@ -1,11 +1,11 @@
 # Luma Studio — Studio Lighting Simulator
 
-可執行的 **Vertical Slice 02 — Studio Editor**（保留 Slice 01）。啟動即載入 Portrait Lighting Scene：一名原創程序式 humanoid、一台 full-frame 相機、120 × 120cm Softbox 及無縫背景。無帳戶、後端或外部角色下載。
+可執行的 **VS03.1 — Light Positioning & Aiming UX**（保留先前 editor 與七類器材）。啟動即載入 Portrait Lighting Scene：一名原創程序式 humanoid、一台 full-frame 相機、120 × 120cm Softbox 及無縫背景。無帳戶、後端或外部角色下載。
 
 ## 第一個實驗
 
 1. 在右側選取 **Key light**（120cm Softbox），或直接點擊 Studio View 內的燈具。
-2. 拖動彩色軸移動：X/Z 改燈位，綠色 Y 軸升降。按 **E** 切換旋轉環；右側 Transform 亦可輸入精確座標／角度。**Aim at model** 重新對準人物。
+2. 拖動彩色軸移動：X/Z 改燈位，綠色 Y 軸升降。按 **E** 切換旋轉環；右側 Transform 亦可輸入精確座標／角度。燈具使用 **Aim at Face / Chest / Model Center** 重新對準人物。
 3. 用 **Softbox size** 比較 30cm 與 180cm；人物鼻影、身體亮部及背景影緣會改變。預設尺寸 120cm。
 4. 改變 Power、Color temperature，或將燈移遠；亮度、色調與光衰減即時改變。
 5. 下方選擇 **35 / 50 / 85 / 105mm**，調整 ISO、Aperture、Shutter speed。選取 Camera 可移動及旋轉真正的拍攝相機。
@@ -127,3 +127,19 @@ Rendering reuses the nine-light shadow pool and accumulates eight aperture passe
 Limitations: geometric direct-light approximation, not measured lux, spectral transport or a commercial product match. Angular profiles use spotlight cones/penumbrae; no measured IES profiles, interreflection, transmission or detailed umbrella fabric scattering. Fixed sample counts can leave grain/banding, especially in the nine-sample Studio view. Equipment remains hidden in Camera Preview and does not occlude other lights. Equal-depth light accumulation currently targets opaque materials. Ten mixed lights were interactively checked on this machine; CPU submission time is not a GPU FPS claim.
 
 **Catchlight / VS04 blocker:** the current small, rough procedural eyes lack a corneal reflection model. No fake eye overlay was added. `catchlightDescriptor` exposes shape, physical dimensions, central occlusion, Grid and aperture samples to a future corneal reflection adapter; it is also attached to equipment renderer metadata. Implement proper eyes/cornea and reflection visibility before claiming modifier-shaped catchlights.
+
+
+## VS03.1 — Photography-oriented aiming
+
+- Selected light 的 **Light Position & Aim** 提供 Horizontal −90/−45/0/+45/+90/135/180°、Vertical −45/−30/0/+30/+45°，也可輸入 37° 或小數角度。
+- 0° 是模特兒朝向拍攝相機的位置方向；正值是 Camera Right、負值是 Camera Left；135° 後側、180° 背光。使用 camera-to-model 的水平投影，不受 Studio orbit 或 camera roll 影響。
+- 角度控制繞選定 landmark 移動燈具，保留三維距離與另一個角度，然後將 modifier 的 local −Z 發光面對準目標。數值表示燈位方位／高低，並非自由旋轉後的 Euler 方向。
+- Face / Chest / Model Center 按人物高度、位置與旋轉計算；Aim 只改朝向。Auto Aim 預設 Off，逐燈保存；開啟後移燈、移人物或改人物高度均跟隨目標。自由旋轉或 numeric WORLD rotation 關閉該燈 Auto Aim；取消拖曳恢復原設定。
+- Transform 的 Rotation snap：Off / 5 / 15 / 45°，作用於旋轉 gizmo（world-space）；numeric angles 不受 snap 限制。
+- Studio 的青色箭頭是真實出光方向，金點是選定目標。兩者屬 editor overlay，Camera Preview 不渲染；選取 Model/Camera 時隱藏。
+- Portrait、Three-Light 及三個 comparison presets 使用 semantic positioning。Comparison presets 按當前 Camera/Model 重算燈位並保留相機、人物、曝光及背景。
+- Optional per-light `aiming: {target, auto}` 隨 JSON 匯出；v1/v2 舊場景無此欄位仍可使用，預設 face / Auto Off。
+
+限制：landmarks 為現有人台的近似解剖位置。角度控制維持精確半徑，不做器材碰撞／地板限制；低於 0.25m 會提示。Vertical numeric 限制 ±89° 避免極點方位不定。相機位於人物正上方時以相機方向的水平投影作 fallback，仍退化則使用 +Z。移動相機只改變角度基準，不會自動繞移已放好的燈；Auto Aim 跟隨目標而非保持方位角。光影仍是 VS03 的近似模型，無 GI／皮膚 SSS。
+
+驗證：63 項 automated tests（31 項 aiming + 32 項既有測試），TypeScript 與 production build；真實瀏覽器記錄見 `tests/VS03.1-VERIFICATION.md`。

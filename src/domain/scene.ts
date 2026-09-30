@@ -1,3 +1,5 @@
+import { placeLight, syncAutoAim } from './aiming';
+import type { AimTarget } from './aiming';
 import { makeModifier, switchModifier, withGrid } from './equipment';
 import type { ModifierSpec } from './equipment';
 export type Vec3 = [number, number, number];
@@ -8,6 +10,7 @@ export interface LightSpec {
   id: `light-${string}`; name: string; enabled: boolean; fixtureId: string; transform: Transform;
   source: { mode: 'continuous'; dimmerPercent: number; temperatureK: number } | { mode: 'strobe'; powerEv: number; temperatureK: number };
   modifier: ModifierSpec;
+  aiming?: { target: AimTarget; auto: boolean };
 }
 export interface Transform { positionM: Vec3; quaternion: Quat }
 export interface CameraSpec {
@@ -50,7 +53,7 @@ export function lookAt(position: Vec3, target: Vec3): Quat {
 }
 export function makePortraitScene(): SceneDocument {
   const cam:Vec3=[0,1.38,3.4], light:Vec3=[-1.25,2.15,1.3];
-  return {
+  const scene:SceneDocument = {
     schemaVersion:2,id:'portrait-01',name:'Portrait study',units:'m',catalogVersion:'generic-equipment-1',createdAt:'2026-09-30T00:00:00Z',updatedAt:'2026-09-30T00:00:00Z',
     camera:{id:'camera-01',transform:{positionM:cam,quaternion:lookAt(cam,[0,1.22,0])},sensorWidthMm:36,sensorHeightMm:24,focalLengthMm:50,fNumber:4,shutterSeconds:1/125,iso:200,whiteBalanceK:5600,exposureCompEv:0},
     model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',hairStyle:'short',hairColor:'#201916'},
@@ -58,10 +61,16 @@ export function makePortraitScene(): SceneDocument {
     environment:{backgroundColor:'#887b6f',floorColor:'#887b6f',floorFollowsBackground:true,widthM:8,heightM:5,depthM:10,curveRadiusM:1},
     render:{quality:'balanced',previewMode:'capture',seed:42},
   };
+  scene.lights[0]=placeLight(scene,scene.lights[0],{horizontal:-45,vertical:20,distance:1.9});
+  return scene;
 }
 export function getTransform(s: SceneDocument, selected: Selection): Transform { return selected==='camera'||selected==='model'?s[selected].transform:s.lights.find(l=>l.id===selected)?.transform??s.model.transform; }
-export function withTransform(s: SceneDocument, selected: Selection, t: Transform): SceneDocument {
-  return selected==='camera'||selected==='model' ? {...s,[selected]:{...s[selected],transform:t}} : updateLight(s,selected,{transform:t});
+export function withTransform(s: SceneDocument, selected: Selection, t: Transform, manualRotation=false): SceneDocument {
+  if(selected==='camera'||selected==='model')return syncAutoAim({...s,[selected]:{...s[selected],transform:t}});
+  const light=s.lights.find(l=>l.id===selected);
+  if(!light)return s;
+  const aiming=manualRotation?{target:light.aiming?.target??'face',auto:false}:light.aiming;
+  return syncAutoAim(updateLight(s,selected,{transform:t,aiming}));
 }
 export function updateLight(s:SceneDocument,id:LightSpec['id'],patch:Partial<Omit<LightSpec,'id'>>):SceneDocument {
   return {...s,lights:s.lights.map(l=>l.id===id?{...l,...patch}:l)};
@@ -70,19 +79,20 @@ export function addLight(s:SceneDocument,id:LightSpec['id']=`light-${crypto.rand
   const l=structuredClone(makePortraitScene().lights[0]);l.id=id;l.name=`Light ${s.lights.length+1}`;
   let suffix=s.lights.length+1;while(s.lights.some(existing=>existing.name===l.name))l.name=`Light ${++suffix}`;
   l.transform.positionM=[1.4,2,1.3];l.transform.quaternion=lookAt(l.transform.positionM,[0,1.4,0]);
+  Object.assign(l,placeLight(s,l,{horizontal:45,vertical:15,distance:2}));
   l.source={mode:'continuous',dimmerPercent:30,temperatureK:5600};return {...s,lights:[...s.lights,l]};
 }
 export function duplicateLight(s:SceneDocument,id:LightSpec['id'],newId:LightSpec['id']=`light-${crypto.randomUUID()}`):SceneDocument {
   const source=s.lights.find(l=>l.id===id);if(!source)return s;
   const copy=structuredClone(source);copy.id=newId;copy.name=`${source.name} copy`;copy.transform.positionM[0]=Math.min(4,copy.transform.positionM[0]+.3);
-  return {...s,lights:[...s.lights,copy]};
+  return syncAutoAim({...s,lights:[...s.lights,copy]});
 }
 export function deleteLight(s:SceneDocument,id:LightSpec['id']):SceneDocument {return {...s,lights:s.lights.filter(l=>l.id!==id)};}
 export function hasStrobe(s:SceneDocument){return s.lights.some(l=>l.enabled&&l.source.mode==='strobe');}
 export function makeThreeLightScene():SceneDocument {
   let s=makePortraitScene();s.name='Three-light portrait';s=addLight(s,'light-fill');s=addLight(s,'light-rim');
   s.lights[0].name='Key Light';s.lights[1].name='Fill Light';s.lights[1].source={mode:'continuous',dimmerPercent:22,temperatureK:5600};
-  const rim=s.lights[2];rim.name='Rim Light';rim.transform.positionM=[.8,2.2,-1.2];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.45,0]);rim.modifier.widthM=.6;rim.modifier.heightM=.6;rim.modifier.sizeId='custom';rim.source={mode:'continuous',dimmerPercent:45,temperatureK:5600};return s;
+  const rim=s.lights[2];rim.name='Rim Light';rim.transform.positionM=[.8,2.2,-1.2];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.45,0]);rim.modifier.widthM=.6;rim.modifier.heightM=.6;rim.modifier.sizeId='custom';rim.source={mode:'continuous',dimmerPercent:45,temperatureK:5600};s.lights[2]=placeLight(s,rim,{horizontal:135,vertical:20,distance:1.6});return s;
 }
 /** Uniform strata conserve total source energy while the physical aperture changes. */
 export function emitterSamples(size: number, count=3) {
@@ -106,6 +116,7 @@ export function makeEquipmentScene(preset:LightingPreset):SceneDocument {
     s.name='Dramatic Strip / Rim';key.modifier=withGrid(makeModifier('stripbox','30x120'),true);key.transform.positionM=[-1.15,1.75,.35];key.transform.quaternion=lookAt(key.transform.positionM,[0,1.4,0]);
     s=addLight(s,'light-rim');const rim=s.lights[1];rim.name='Rim Light';rim.modifier=withGrid(makeModifier('stripbox','40x180'),true);rim.transform.positionM=[.8,1.8,-.8];rim.transform.quaternion=lookAt(rim.transform.positionM,[0,1.4,0]);rim.source={mode:'continuous',dimmerPercent:55,temperatureK:5600};
   }
+  s.lights=s.lights.map((light,i)=>placeLight(s,light,{horizontal:i===0?(preset==='beauty'?0:preset==='dramatic'?-75:-45):(preset==='dramatic'?135:45),vertical:i===0?30:15,distance:i===0?1.9:2}));
   return s;
 }
 /** Explicit v1 adapter preserves custom apertures and transforms; no renderer objects enter JSON. */

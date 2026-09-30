@@ -17,7 +17,7 @@ describe('multi-light editor',()=>{
   });
   it('duplicates all properties without sharing nested mutable values',()=>{
     const s=makeThreeLightScene();const next=duplicateLight(s,'light-rim','light-copy');const copy=next.lights.at(-1)!;
-    expect(copy.id).toBe('light-copy');expect(copy.name).toBe('Rim Light copy');expect(copy.modifier).toEqual(s.lights[2].modifier);expect(copy.modifier).not.toBe(s.lights[2].modifier);expect(copy.transform.positionM[0]).toBeCloseTo(1.1);
+    expect(copy.id).toBe('light-copy');expect(copy.name).toBe('Rim Light copy');expect(copy.modifier).toEqual(s.lights[2].modifier);expect(copy.modifier).not.toBe(s.lights[2].modifier);expect(copy.transform.positionM[0]).toBeCloseTo(s.lights[2].transform.positionM[0]+.3);
   });
   it('can remove every light and later add one again',()=>{
     const s=makePortraitScene();const empty=deleteLight(s,'light-key');expect(empty.lights).toEqual([]);expect(empty.camera).toBe(s.camera);expect(addLight(empty,'light-new').lights).toHaveLength(1);

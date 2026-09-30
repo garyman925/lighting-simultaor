@@ -1,3 +1,4 @@
+import { aimPoint, snapRadians } from '../domain/aiming';
 import { apertureSamples, opticalParameters, catchlightDescriptor } from '../domain/equipment';
 import { makeEquipmentVisual } from './equipmentVisual';
 import * as T from 'three';
@@ -8,7 +9,7 @@ import type { SceneDocument, Selection, Transform, LightSpec, StudioView } from 
 import { makeHumanoid } from './humanoid';
 
 export interface FrameStats { ms:number; triangles:number; calls:number; samples:number; frames:number; }
-interface Callbacks { transform:(selection:Selection,t:Transform)=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
+interface Callbacks { transform:(selection:Selection,t:Transform,restoreAim?:LightSpec['aiming'])=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
 export class StudioRenderer {
   private renderer:T.WebGLRenderer;
   private scene=new T.Scene();
@@ -20,6 +21,8 @@ export class StudioRenderer {
   private studioTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType});
   private selectionBox=new T.Box3Helper(new T.Box3(),0xffd38a);
   private overlay=new T.Scene();
+  private aimingArrow=new T.ArrowHelper(new T.Vector3(0,0,-1),new T.Vector3(),1,0x79e8db);
+  private aimingTarget=new T.Mesh(new T.SphereGeometry(.035,12,8),new T.MeshBasicMaterial({color:0xffd38a,depthTest:false}));
   private shot=new T.PerspectiveCamera(30,1.5,.05,50);
   private orbit:OrbitControls;
   private gizmo:TransformControls;
@@ -41,6 +44,7 @@ export class StudioRenderer {
   private frames=0;
   private pointerStart=[0,0];
   private dragBefore:Transform|null=null;
+  private dragBeforeAim:LightSpec['aiming'];
   private lastStats=0;
   private contextLost=false;
   private batch=0;
@@ -72,12 +76,12 @@ export class StudioRenderer {
     this.orbit=new OrbitControls(this.editor,studioView);this.orbit.target.set(0,1,0);this.orbit.minDistance=.4;this.orbit.maxDistance=35;this.orbit.minZoom=.15;this.orbit.maxZoom=12;this.orbit.screenSpacePanning=true;this.orbit.mouseButtons={LEFT:T.MOUSE.ROTATE,MIDDLE:T.MOUSE.PAN,RIGHT:T.MOUSE.PAN};this.orbit.update();
     this.orbit.addEventListener('change',this.invalidateStudio);
     this.gizmo=new TransformControls(this.editor,studioView);this.gizmo.setSize(.82);this.gizmo.setSpace('world');
-    this.overlay.add(this.gizmo.getHelper(),this.selectionBox);(this.selectionBox.material as T.LineBasicMaterial).depthTest=false;
+    this.overlay.add(this.gizmo.getHelper(),this.selectionBox,this.aimingArrow,this.aimingTarget);(this.selectionBox.material as T.LineBasicMaterial).depthTest=false;
     this.gizmo.addEventListener('dragging-changed',e=>{this.orbit.enabled=!e.value;});
-    this.gizmo.addEventListener('mouseDown',()=>{this.dragBefore=structuredClone(getTransform(this.document,this.selected));});
+    this.gizmo.addEventListener('mouseDown',()=>{this.dragBefore=structuredClone(getTransform(this.document,this.selected));const light=this.document.lights.find(l=>l.id===this.selected);this.dragBeforeAim=light?structuredClone(light.aiming??{target:'face',auto:false}):undefined;});
     this.gizmo.addEventListener('mouseUp',()=>{this.dragBefore=null;});
     this.gizmo.addEventListener('objectChange',()=>{
-      const o=this.object(this.selected);if(!o)return;o.position.x=T.MathUtils.clamp(o.position.x,-4,4);o.position.y=T.MathUtils.clamp(o.position.y,this.selected==='model'?0:.25,4);o.position.z=T.MathUtils.clamp(o.position.z,-3,6);
+      const o=this.object(this.selected);if(!o)return;if(this.gizmo.getMode()==='translate'){o.position.x=T.MathUtils.clamp(o.position.x,-4,4);o.position.y=T.MathUtils.clamp(o.position.y,this.selected==='model'?0:.25,4);o.position.z=T.MathUtils.clamp(o.position.z,-3,6);}
       this.callbacks.transform(this.selected,{positionM:o.position.toArray(),quaternion:o.quaternion.toArray()});
     });
     this.gizmo.addEventListener('change',this.invalidateStudio);
@@ -151,7 +155,8 @@ export class StudioRenderer {
   }
   select(s:Selection){this.selected=s;const o=this.object(s);if(o)this.gizmo.attach(o);else this.gizmo.detach();this.invalidateStudio();}
   mode(m:'translate'|'rotate'){this.gizmo.setMode(m);this.invalidateStudio();}
-  cancelDrag(){if(this.dragBefore){const before=this.dragBefore;this.gizmo.reset();this.callbacks.transform(this.selected,before);this.dragBefore=null;}this.orbit.enabled=true;}
+  rotationSnap(degrees:number){this.gizmo.setRotationSnap(snapRadians(degrees));this.invalidateStudio();}
+  cancelDrag(){if(this.dragBefore){const before=this.dragBefore;this.gizmo.reset();this.callbacks.transform(this.selected,before,this.dragBeforeAim);this.dragBefore=null;}this.orbit.enabled=true;}
   setView(view:StudioView){
     this.view=view;this.editor=view==='Perspective'?this.perspective:this.orthographic;
     this.editor.up.set(0,view==='Top'?0:1,view==='Top'?-1:0);
@@ -218,6 +223,15 @@ export class StudioRenderer {
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.displayMaterial.map=this.studioTarget.texture;this.renderer.render(this.displayScene,this.screenCamera);
     const selectedObject=this.object(this.selected);this.selectionBox.visible=!!selectedObject;
     if(selectedObject)this.selectionBox.box.setFromObject(selectedObject,true);
+    const selectedLight=this.document.lights.find(l=>l.id===this.selected);
+    this.aimingArrow.visible=this.aimingTarget.visible=!!selectedLight;
+    if(selectedLight){
+      const origin=new T.Vector3(...selectedLight.transform.positionM),target=new T.Vector3(...aimPoint(this.document,selectedLight.aiming?.target));
+      this.aimingArrow.position.copy(origin);
+      this.aimingArrow.setDirection(new T.Vector3(0,0,-1).applyQuaternion(new T.Quaternion(...selectedLight.transform.quaternion)));
+      this.aimingArrow.setLength(Math.max(.1,origin.distanceTo(target)),.14,.07);
+      this.aimingTarget.position.copy(target);
+    }
     this.renderer.clearDepth();this.renderer.render(this.overlay,this.editor);
     const b=this.viewport(this.previewView);this.renderer.setViewport(b.x,b.y,b.w,b.h);this.renderer.setScissor(b.x,b.y,b.w,b.h);this.renderer.setClearColor('#111516');this.renderer.clear();
     let w=b.w,h=w/1.5;if(h>b.h){h=b.h;w=h*1.5;}
@@ -240,7 +254,7 @@ export class StudioRenderer {
     if(start-this.lastStats>250||this.frames<3||this.batch===8){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.batch*9,frames:this.frames});this.lastStats=start;}
     if(this.batch<8)this.invalidate();
   };
-  dispose(){this.disposed=true;cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();
+  dispose(){this.disposed=true;cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();this.aimingArrow.dispose();this.aimingTarget.geometry.dispose();this.aimingTarget.material.dispose();
     const geometry=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();this.scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){geometry.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
     geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.lights.forEach(l=>l.shadow.dispose());this.studioTarget.dispose();this.selectionBox.geometry.dispose();(this.selectionBox.material as T.LineBasicMaterial).dispose();this.sampleTarget.dispose();this.history.forEach(t=>t.dispose());this.composite.dispose();this.displayMaterial.dispose();this.compositeScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.displayScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.renderer.dispose();this.renderer.domElement.remove();
   }
