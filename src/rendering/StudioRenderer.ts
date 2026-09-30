@@ -36,6 +36,15 @@ export class StudioRenderer {
   private dragBefore:Transform|null=null;
   private lastStats=0;
   private contextLost=false;
+  private batch=0;
+  private sampleTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType});
+  private history=[new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType}),new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType})];
+  private compositeScene=new T.Scene();
+  private displayScene=new T.Scene();
+  private screenCamera=new T.OrthographicCamera(-1,1,1,-1,0,1);
+  private composite=new T.ShaderMaterial({uniforms:{previous:{value:null},sampleFrame:{value:null},weight:{value:1}},vertexShader:'varying vec2 texUv; void main(){texUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:'uniform sampler2D previous;uniform sampler2D sampleFrame;uniform float weight;varying vec2 texUv;void main(){gl_FragColor=mix(texture2D(previous,texUv),texture2D(sampleFrame,texUv),weight);}',depthTest:false,depthWrite:false,toneMapped:false});
+  private displayMaterial=new T.MeshBasicMaterial({depthTest:false,depthWrite:false});
+  private supportsFloat=true;
   private disposers:(()=>void)[]=[];
 
   constructor(private host:HTMLElement,private studioView:HTMLElement,private previewView:HTMLElement,document:SceneDocument,private callbacks:Callbacks) {
@@ -45,6 +54,9 @@ export class StudioRenderer {
     this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.shadowMap.autoUpdate=false;
     this.renderer.autoClear=false;this.renderer.info.autoReset=false;
+    this.supportsFloat=this.renderer.extensions.has('EXT_color_buffer_float');this.sampleTarget.samples=4;
+    this.compositeScene.add(new T.Mesh(new T.PlaneGeometry(2,2),this.composite));
+    this.displayScene.add(new T.Mesh(new T.PlaneGeometry(2,2),this.displayMaterial));
     this.renderer.domElement.className='render-canvas';this.renderer.domElement.setAttribute('aria-label','3D Studio and Camera rendering');
     host.prepend(this.renderer.domElement);
     this.editor.position.set(4.4,3.0,5.6);
@@ -65,10 +77,10 @@ export class StudioRenderer {
     this.stage=this.makeStage();this.scene.add(this.stage);
     const grid=new T.GridHelper(10,20,0x6f7777,0x4b5354);grid.position.y=.002;(grid.material as T.Material).transparent=true;(grid.material as T.Material).opacity=.3;this.helpers.add(grid);
     for(let i=0;i<9;i++){
-      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(1024,1024);l.shadow.camera.near=.08;l.shadow.camera.far=15;l.shadow.bias=-.00015;l.shadow.normalBias=.004;
+      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(512,512);l.shadow.camera.near=.08;l.shadow.camera.far=15;l.shadow.bias=-.00015;l.shadow.normalBias=.002;
       const target=new T.Object3D();this.scene.add(l,target);l.target=target;this.lights.push(l);this.targets.push(target);
     }
-    this.resizeObserver=new ResizeObserver(()=>{const r=host.getBoundingClientRect();this.renderer.setSize(r.width,r.height,false);this.invalidate();});this.resizeObserver.observe(host);this.resizeObserver.observe(studioView);this.resizeObserver.observe(previewView);
+    this.resizeObserver=new ResizeObserver(()=>{const r=host.getBoundingClientRect();this.renderer.setSize(r.width,r.height,false);this.batch=0;this.invalidate();});this.resizeObserver.observe(host);this.resizeObserver.observe(studioView);this.resizeObserver.observe(previewView);
     this.listen(studioView,'pointerdown',((e:PointerEvent)=>{this.pointerStart=[e.clientX,e.clientY];}) as EventListener);
     this.listen(studioView,'pointerup',((e:PointerEvent)=>this.pick(e)) as EventListener);
     this.listen(this.renderer.domElement,'webglcontextlost',((e:Event)=>{e.preventDefault();this.contextLost=true;this.callbacks.error('繪圖連線中斷。請重新載入；目前場景可先匯出備份。');}) as EventListener);
@@ -108,6 +120,8 @@ export class StudioRenderer {
     const prev=this.document;
     this.shadowDirty ||= JSON.stringify([prev.model,prev.lights[0].transform,prev.lights[0].modifier])!==JSON.stringify([s.model,s.lights[0].transform,s.lights[0].modifier]);
     this.document=s;
+    this.batch=0;
+    this.callbacks.stats({ms:this.elapsed.at(-1)??0,triangles:0,calls:0,samples:0,frames:this.frames});
     for(const selected of ['model','camera','softbox'] as Selection[]){const t=getTransform(s,selected),o=this.object(selected);o.position.fromArray(t.positionM);o.quaternion.fromArray(t.quaternion);}
     this.human.root.scale.setScalar(s.model.heightCm/175);this.human.skin.color.set(s.model.skinColor);
     const light=s.lights[0],size=light.modifier.widthM;this.boxVisual.scale.set(size,light.modifier.heightM,1);
@@ -141,19 +155,37 @@ export class StudioRenderer {
     this.renderer.setScissorTest(true);
     const a=this.viewport(this.studioView);this.renderer.setViewport(a.x,a.y,a.w,a.h);this.renderer.setScissor(a.x,a.y,a.w,a.h);this.renderer.setClearColor('#252d31');this.renderer.clear();
     this.editor.aspect=a.w/a.h;this.editor.updateProjectionMatrix();
-    this.helpers.visible=true;this.cameraRig.visible=true;this.scene.background=null;
+    this.helpers.visible=true;this.cameraRig.visible=true;this.scene.background=null;this.renderer.toneMapping=T.ACESFilmicToneMapping;
     this.renderer.shadowMap.needsUpdate=this.shadowDirty;this.renderer.render(this.scene,this.editor);this.shadowDirty=false;
     const b=this.viewport(this.previewView);this.renderer.setViewport(b.x,b.y,b.w,b.h);this.renderer.setScissor(b.x,b.y,b.w,b.h);this.renderer.setClearColor('#111516');this.renderer.clear();
     let w=b.w,h=w/1.5;if(h>b.h){h=b.h;w=h*1.5;}
-    this.renderer.setViewport(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.setScissor(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);
-    this.renderer.setClearColor(this.document.environment.backgroundColor);this.renderer.clear();this.helpers.visible=false;this.cameraRig.visible=false;
-    this.renderer.render(this.scene,this.shot);this.helpers.visible=true;this.cameraRig.visible=true;
+    this.helpers.visible=false;this.cameraRig.visible=false;
+    if(this.supportsFloat){
+      const rw=Math.max(1,Math.min(1200,Math.round(w*this.renderer.getPixelRatio()))),rh=Math.round(rw/1.5);
+      if(this.sampleTarget.width!==rw||this.sampleTarget.height!==rh){this.sampleTarget.setSize(rw,rh);this.history.forEach(t=>t.setSize(rw,rh));this.batch=0;}
+      if(this.batch<8){
+        // Eight deterministic strata offsets, nine points per batch. Accumulate before tone mapping.
+        const jitter=[[-.31,.17],[.23,-.29],[-.09,-.11],[.37,.39],[-.42,-.37],[.06,.33],[.29,.02],[-.22,-.43]][this.batch];
+        const size=this.document.lights[0].modifier.widthM;
+        emitterSamples(size).forEach((s,i)=>{const pos=new T.Vector3(s.position[0]+jitter[0]*size/3,s.position[1]+jitter[1]*size/3,s.position[2]).applyMatrix4(this.softbox.matrixWorld);this.lights[i].position.copy(pos);this.targets[i].position.copy(pos).add(new T.Vector3(0,0,-1).applyQuaternion(this.softbox.quaternion));});
+        this.renderer.setScissorTest(false);this.renderer.toneMapping=T.NoToneMapping;this.renderer.setRenderTarget(this.sampleTarget);this.renderer.setClearColor(this.document.environment.backgroundColor);this.renderer.clear();this.renderer.shadowMap.needsUpdate=true;this.renderer.render(this.scene,this.shot);
+        const destination=this.history[this.batch%2],previous=this.history[(this.batch+1)%2];
+        if(this.batch===0){this.renderer.setRenderTarget(previous);this.renderer.setClearColor(0);this.renderer.clear();}
+        this.composite.uniforms.previous.value=previous.texture;this.composite.uniforms.sampleFrame.value=this.sampleTarget.texture;this.composite.uniforms.weight.value=1/(this.batch+1);
+        this.renderer.setRenderTarget(destination);this.renderer.clear();this.renderer.render(this.compositeScene,this.screenCamera);this.displayMaterial.map=destination.texture;this.batch++;
+      }
+      this.renderer.setRenderTarget(null);this.renderer.setScissorTest(true);this.renderer.setViewport(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.setScissor(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.render(this.displayScene,this.screenCamera);
+    }else{
+      this.renderer.setViewport(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.setScissor(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.setClearColor(this.document.environment.backgroundColor);this.renderer.clear();this.renderer.render(this.scene,this.shot);
+    }
+    this.helpers.visible=true;this.cameraRig.visible=true;
     this.frames++;const ms=performance.now()-start;this.elapsed.push(ms);if(this.elapsed.length>60)this.elapsed.shift();
-    if(start-this.lastStats>250||this.frames<3){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:9,frames:this.frames});this.lastStats=start;}
+    if(start-this.lastStats>250||this.frames<3||this.batch===8){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.supportsFloat?this.batch*9:9,frames:this.frames});this.lastStats=start;}
+    if(this.supportsFloat&&this.batch<8)this.invalidate();
   };
   dispose(){this.disposed=true;cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();
     const geometry=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();this.scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){geometry.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
-    geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.lights.forEach(l=>l.shadow.dispose());this.renderer.dispose();this.renderer.domElement.remove();
+    geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.lights.forEach(l=>l.shadow.dispose());this.sampleTarget.dispose();this.history.forEach(t=>t.dispose());this.composite.dispose();this.displayMaterial.dispose();this.compositeScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.displayScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.renderer.dispose();this.renderer.domElement.remove();
   }
 }
 function documentOwner(){return window.document;}

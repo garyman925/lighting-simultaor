@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "id": "portrait-01",
+  "name": "Portrait study",
+  "units": "m",
+  "catalogVersion": "mvp-generic-1",
+  "createdAt": "2026-09-30T00:00:00Z",
+  "updatedAt": "2026-09-30T00:00:00Z",
+  "camera": {
+    "id": "camera-01",
+    "transform": {
+      "positionM": [
+        0,
+        1.38,
+        3.4
+      ],
+      "quaternion": [
+        -0.023509899668670918,
+        0,
+        0,
+        0.9997236041114409
+      ]
+    },
+    "sensorWidthMm": 36,
+    "sensorHeightMm": 24,
+    "focalLengthMm": 50,
+    "fNumber": 4,
+    "shutterSeconds": 0.008,
+    "iso": 200,
+    "whiteBalanceK": 5600,
+    "exposureCompEv": 0
+  },
+  "model": {
+    "id": "model-01",
+    "assetId": "human-base-01",
+    "transform": {
+      "positionM": [
+        0,
+        0,
+        0
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "heightCm": 175,
+    "bodyPreset": "regular",
+    "skinColor": "#BD8867",
+    "hairStyle": "short",
+    "hairColor": "#201916"
+  },
+  "lights": [
+    {
+      "id": "light-key",
+      "name": "Key light",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          -1.25,
+          2.15,
+          1.3
+        ],
+        "quaternion": [
+          -0.18160399590856438,
+          -0.3663784837952448,
+          -0.07314556829343477,
+          0.9096353781164023
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 70,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "presetId": "softbox-120",
+        "widthM": 1.2,
+        "heightM": 1.2,
+        "gridId": null
+      }
+    }
+  ],
+  "environment": {
+    "backgroundColor": "#887b6f",
+    "floorColor": "#887b6f",
+    "floorFollowsBackground": true,
+    "widthM": 8,
+    "heightM": 5,
+    "depthM": 10,
+    "curveRadiusM": 1
+  },
+  "render": {
+    "quality": "balanced",
+    "previewMode": "capture",
+    "seed": 42
+  }
+}
