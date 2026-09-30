@@ -1,0 +1,137 @@
+{
+  "iso-800": {
+    "mean_rgb": [
+      159.8,
+      139.51,
+      119.76
+    ],
+    "mean_pixel_change": 79.22
+  },
+  "aperture-8": {
+    "mean_rgb": [
+      24.05,
+      17.51,
+      12.39
+    ],
+    "mean_pixel_change": 42.5
+  },
+  "shutter-500": {
+    "mean_rgb": [
+      24.05,
+      17.51,
+      12.39
+    ],
+    "mean_pixel_change": 42.5
+  },
+  "power-0": {
+    "mean_rgb": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "mean_pixel_change": 60.47
+  },
+  "power-100": {
+    "mean_rgb": [
+      93.31,
+      76.7,
+      62.61
+    ],
+    "mean_pixel_change": 17.08
+  },
+  "softbox-30": {
+    "mean_rgb": [
+      75.84,
+      61.28,
+      49.2
+    ],
+    "mean_pixel_change": 2.7
+  },
+  "softbox-180": {
+    "mean_rgb": [
+      72.77,
+      58.35,
+      46.39
+    ],
+    "mean_pixel_change": 2.39
+  },
+  "softbox-far": {
+    "mean_rgb": [
+      43.98,
+      34.01,
+      25.55
+    ],
+    "mean_pixel_change": 27.89
+  },
+  "kelvin-3200": {
+    "mean_rgb": [
+      118.56,
+      70.06,
+      36.05
+    ],
+    "mean_pixel_change": 22.19
+  },
+  "kelvin-6500": {
+    "mean_rgb": [
+      87.54,
+      77.87,
+      67.32
+    ],
+    "mean_pixel_change": 17.12
+  },
+  "background-blue": {
+    "mean_rgb": [
+      43.86,
+      57.68,
+      64.71
+    ],
+    "mean_pixel_change": 17.35
+  },
+  "native-color-picker": {
+    "mean_rgb": [
+      42.73,
+      49.56,
+      61.73
+    ],
+    "mean_pixel_change": 18.71
+  },
+  "camera-moved": {
+    "mean_rgb": [
+      65.44,
+      52.51,
+      41.78
+    ],
+    "mean_pixel_change": 25.98
+  },
+  "camera-rotated": {
+    "mean_rgb": [
+      52.02,
+      42.19,
+      33.96
+    ],
+    "mean_pixel_change": 50.26
+  },
+  "model-height-turn": {
+    "mean_rgb": [
+      67.62,
+      52.86,
+      41.05
+    ],
+    "mean_pixel_change": 14.46
+  },
+  "orbit_preview_difference": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "strobe_shutter_difference": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "equivalent_exposure_difference": [
+    0.0,
+    0.0,
+    0.0
+  ]
+}
