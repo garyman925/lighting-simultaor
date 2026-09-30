@@ -34,3 +34,32 @@
 Camera Preview 支援時以 72 樣本收斂；Studio View 為 9 樣本。暖機後介面顯示的 CPU render submission 約 1–數 ms，但沒有測量 GPU p95 frame time，因此不宣稱通過原規格的指定硬體效能 gate。首次 shader 編譯可能明顯較慢。
 
 未驗證：其他 GPU／瀏覽器版本、長時間記憶體壓力、GPU context lost 的真實恢復，以及真實照相器材校正。未實作部分列於 README；本次僅交付 Vertical Slice 01。
+
+## Vertical Slice 02 — Studio Editor（2026-09-30）
+
+本輪在既有 repository 實作；使用 production build 的本機 preview server 驗證。截圖與讀回的 scene JSON 位於 `evidence/slice-02/`。
+
+1. Orbit：實際左鍵拖曳，編輯視角明顯改變。
+2. Pan：實際 Shift + 左鍵拖曳；中／右鍵亦已設定為 Pan，但瀏覽器工具未直接模擬右鍵連續拖曳。
+3. Zoom：Studio View 內滾輪縮放。
+4. Top / Front / Side / Perspective：逐一切換，前三者為正交投影；Reset View 可還原目前視角。
+5. 逐次 Add Light 新增第二與第三盞；另外實際增加至十盞，仍可渲染，無燈數 hard limit。
+6. 三盞燈分別修改 Position X 為 -1.8 / 1.8 / 0.6m，讀回 JSON 確認獨立保存。
+7. 分別修改三盞燈 Rotation Y；JSON quaternion 不同。Top View 直接拖動 Fill Light 的紅軸後 X=1.96m；拖旋轉環後 Y 從 44.36° 變為 -67.14°。
+8. 分別調整 Power 至 65 / 25 / 40%，讀回值符合操作。
+9. 每盞燈 Enable / Disable 獨立作用；全關時 Preview ROI 的 RGB 均為零。
+10. Rename 為 Rim Custom，Duplicate 產生獨立 ID / Rim Custom copy。
+11. Delete copy 後列表移除；單燈刪除至零盞後可再 Add Light；Reset 復原單燈 Portrait。
+12. Three-Light Preset 建立 Key / Fill / Rim，同時照亮人物。逐盞關閉的 Preview 差異均非零。
+13. Orbit、Pan、Zoom、四種視角的固定 Preview ROI 像素差全部為零；經 UI 匯出前後 JSON，Camera 與 Lights 完全相同。
+14. 1280×720 / 1366×900 / 1920×1080 版面檢查；文字依角色使用 12 / 14 / 15 / 16px tokens。Light name 實測 15px、38px 高；1366 視窗沒有水平溢出。筆電需要垂直捲動；Inspector 獨立捲動。
+15. Regression：35 / 50 / 85 / 105mm、ISO800、f/8、1/500s、原生背景色、Camera 位移及 Aim、Model 身高／轉向、Softbox 30 / 180cm、3200 / 6500K、Reset 都已操作及截圖。混合場景啟用 strobe 時限制快門；關閉 strobe 後可選 1/500，重新啟用會回到 1/200。
+16. TypeScript strict 檢查 + Vite production build 成功（`--configLoader runner`）。
+17. Vitest：原有 9 + 新增 8，共 **17/17** 通過；新增測試涵蓋多燈 ID、獨立更新、重排後 transform、深複製、零燈重建、閃燈開關、預設隔離及 stale ID。
+18. 最終正式 bundle 的 browser console errors / warnings：**0**。
+
+影像量測 ROI 為 [620,300,940,570]，原始完整截圖為工具產生，未修改。資料在 `image-checks.json`；單燈關閉的平均 RGB 差異約為 Key [64.13,54.99,46.99]、Fill [18.64,16.29,14.32]、Rim [1.45,1.36,1.44]。這只證明各燈參與可見光影，並非物理校正。
+
+效能：固定九個 SpotLight / shadow map 池，逐燈線性加色；slider 不重建 scene。十燈測試暖機後介面曾顯示 5.3ms CPU submission；三燈約 1.7–5.1ms。不是 GPU FPS 或 p95 數據；首次 shader 編譯更慢。停下後八批次收斂即停止 render loop。未做跨 GPU 長時間壓力測試；RGBA8 fallback 未在真實不支援 float targets 的硬體上測試。
+
+已知界線：透明／透射材質尚不適用目前 equal-depth 加色策略。設備只顯示於 Studio View；Preview 聚焦人物與背景。Save/load、Undo/Redo、寫實人體、真實器材校正保持後續範圍。

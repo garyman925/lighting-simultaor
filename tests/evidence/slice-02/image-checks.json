@@ -1,0 +1,74 @@
+{
+  "source": "Actual browser screenshots, 1366x900 viewport override",
+  "roi": [
+    620,
+    300,
+    940,
+    570
+  ],
+  "navigation_preview_mean_absolute_rgb_difference": {
+    "orbit": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pan": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "zoom": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "view-top": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "view-front": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "view-side": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "view-perspective": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "per_light_mean_absolute_rgb_difference": {
+    "without-key": [
+      64.13478009259259,
+      54.98745370370371,
+      46.99329861111111
+    ],
+    "without-fill": [
+      18.642083333333332,
+      16.287430555555556,
+      14.319849537037037
+    ],
+    "without-rim": [
+      1.4463310185185185,
+      1.3592708333333334,
+      1.436261574074074
+    ],
+    "all-disabled": [
+      97.34216435185185,
+      80.35194444444444,
+      65.92217592592593
+    ]
+  },
+  "all_disabled_mean_rgb": [
+    0,
+    0,
+    0
+  ],
+  "limits": "Display sRGB image comparison, not a photometric or GPU performance benchmark."
+}

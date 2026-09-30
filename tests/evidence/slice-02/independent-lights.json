@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "id": "portrait-01",
+  "name": "Portrait study",
+  "units": "m",
+  "catalogVersion": "mvp-generic-1",
+  "createdAt": "2026-09-30T00:00:00Z",
+  "updatedAt": "2026-09-30T07:07:08.800Z",
+  "camera": {
+    "id": "camera-01",
+    "transform": {
+      "positionM": [
+        0,
+        1.38,
+        3.4
+      ],
+      "quaternion": [
+        -0.023509899668670918,
+        0,
+        0,
+        0.9997236041114409
+      ]
+    },
+    "sensorWidthMm": 36,
+    "sensorHeightMm": 24,
+    "focalLengthMm": 50,
+    "fNumber": 4,
+    "shutterSeconds": 0.008,
+    "iso": 200,
+    "whiteBalanceK": 5600,
+    "exposureCompEv": 0
+  },
+  "model": {
+    "id": "model-01",
+    "assetId": "human-base-01",
+    "transform": {
+      "positionM": [
+        0,
+        0,
+        0
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "heightCm": 175,
+    "bodyPreset": "regular",
+    "skinColor": "#BD8867",
+    "hairStyle": "short",
+    "hairColor": "#201916"
+  },
+  "lights": [
+    {
+      "id": "light-key",
+      "name": "Key light",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          -1.8,
+          2.15,
+          1.3
+        ],
+        "quaternion": [
+          -0.21181307151115164,
+          -0.2502395890134819,
+          -0.11079735890366599,
+          0.9382106991967997
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 65,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "presetId": "softbox-120",
+        "widthM": 1.2,
+        "heightM": 1.2,
+        "gridId": null
+      }
+    },
+    {
+      "id": "light-c8759c12-f38b-44d7-94f4-06d8e3071bd1",
+      "name": "Light 2",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.8,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          -0.15645744399625502,
+          0.32193582473172955,
+          0.08106114386743303,
+          0.9302190515826706
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 25,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "presetId": "softbox-120",
+        "widthM": 1.2,
+        "heightM": 1.2,
+        "gridId": null
+      }
+    },
+    {
+      "id": "light-c872fce2-4883-4cc1-ad57-833449f3e1c5",
+      "name": "Rim Custom",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          0.6,
+          2,
+          1.3
+        ],
+        "quaternion": [
+          0.09179108287122437,
+          0.9406021174738366,
+          -0.1654036125276648,
+          0.2819285346889546
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 40,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "presetId": "softbox-120",
+        "widthM": 1.2,
+        "heightM": 1.2,
+        "gridId": null
+      }
+    }
+  ],
+  "environment": {
+    "backgroundColor": "#887b6f",
+    "floorColor": "#887b6f",
+    "floorFollowsBackground": true,
+    "widthM": 8,
+    "heightM": 5,
+    "depthM": 10,
+    "curveRadiusM": 1
+  },
+  "render": {
+    "quality": "balanced",
+    "previewMode": "capture",
+    "seed": 42
+  }
+}

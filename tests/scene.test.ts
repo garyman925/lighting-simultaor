@@ -15,4 +15,3 @@ describe('geometry and scene isolation',()=>{
   it('editing/resetting do not mutate the seed or unrelated objects',()=>{const a=makePortraitScene();const b=withTransform(a,'light-key',{positionM:[1,2,3],quaternion:[0,0,0,1]});expect(a.camera).toEqual(b.camera);expect(a.lights[0].transform.positionM).not.toEqual(b.lights[0].transform.positionM);expect(makePortraitScene()).toEqual(a);});
   it('serializes without renderer objects or loss',()=>{const s=makePortraitScene();expect(JSON.parse(JSON.stringify(s))).toEqual(s);});
 });
-

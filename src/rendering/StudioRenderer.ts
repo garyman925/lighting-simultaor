@@ -250,5 +250,3 @@ function kelvin(k:number){
   const t=k/100; const r=t<=66?255:329.698727446*((t-60)**-.1332047592),g=t<=66?99.4708025861*Math.log(t)-161.1195681661:288.1221695283*((t-60)**-.0755148492),b=t>=66?255:t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307;
   const c=new T.Color().setRGB(T.MathUtils.clamp(r/255,0,1),T.MathUtils.clamp(g/255,0,1),T.MathUtils.clamp(b/255,0,1),T.SRGBColorSpace);return c.multiplyScalar(1/(c.r*.2126+c.g*.7152+c.b*.0722));
 }
-
-
