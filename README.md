@@ -7,13 +7,13 @@
 需求：Node.js **22.12+**、支援 WebGL 2 的桌面瀏覽器。建議視窗 1280 × 720 以上，開啟硬體加速。
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm dev
+npm ci
+npm run dev
 ```
 
-開啟 **http://127.0.0.1:5173**。伺服器只監聽本機。Windows 亦可雙擊 `START.cmd`；它優先使用這台機器的 Codex pnpm，否則使用標準 Node.js 安裝的 npm。若 5173 已有此應用執行，直接開網址即可，不需再次啟動。
+開啟 **http://127.0.0.1:5173/lighting-simultaor/**。伺服器只監聽本機。Windows 亦可雙擊 `START.cmd`，使用標準 Node.js 安裝的 npm。若 5173 已有此應用執行，直接開網址即可，不需再次啟動。
 
-沒有 pnpm 也可使用：
+更新依賴時可使用（並提交更新後的 package-lock.json）：
 
 ```sh
 npm install
@@ -78,13 +78,13 @@ React 管理可序列化產品狀態；Three.js 物件只存在 renderer adapter
 ## 測試與 build
 
 ```sh
-pnpm test
-pnpm typecheck
-pnpm build
-pnpm preview
+npm test
+npm run typecheck
+npm run build
+npm run preview
 ```
 
-`preview` 預設在 http://127.0.0.1:4173。正式 bundle 不需後端，可由一般靜態 HTTP server 提供；不要以 file:// 開啟 index.html。
+`preview` 預設在 http://127.0.0.1:4173/lighting-simultaor/。正式 bundle 不需後端，可由一般靜態 HTTP server 提供；不要以 file:// 開啟 index.html。
 
 單元測試涵蓋曝光比例、flash 快門不變性、FOV、發光樣本權重、look-at、Euler/quaternion round-trip、場景不可變更新與 JSON round-trip。瀏覽器證據不是模擬截圖；來自實際運行的本機應用。相對畫面差異只證明畫面變化，不當作絕對測光校正。
 
@@ -92,3 +92,30 @@ pnpm preview
 
 專案是獨立 Git repository，分支 `codex/vertical-slice-01`，提交分開記錄骨架、可操作 slice、渲染／互動修正及測試交接。全部人台與設備幾何皆為程式生成，沒有使用 set.a.light 或第三方角色資產。UI 圖示由 lucide-react 提供，其授權隨依賴包提供。
 
+
+
+## GitHub Pages 部署
+
+公開 Demo：[Luma Studio](https://garyman925.github.io/lighting-simultaor/)（首次 Actions 部署成功後可用）。
+
+Repository：https://github.com/garyman925/lighting-simultaor
+
+- 正式分支為 `main`；原來四個 Vertical Slice commits 及 `codex/vertical-slice-01` 本地分支保留。
+- Vite `base` 固定為 `/lighting-simultaor/`，包含 repository 原有拼法。
+- 首次在 GitHub **Settings → Pages → Build and deployment → Source** 選 **GitHub Actions**。
+- 每次 push 到 `main`，`.github/workflows/deploy.yml` 會用 Node 22、`npm ci`、`npm test`、`npm run build`，然後部署 `dist`。PR 只執行驗證；也可在 Actions 手動 Run workflow。
+- npm 和 `package-lock.json` 是本地與 CI 的依賴來源；新增或更新依賴後請提交 lockfile。
+- Actions 成功後打開 Demo，確認雙視角、燈光、背景色、焦距與曝光。若需核對部署，檢查 Actions 的 deploy job 及 github-pages environment。
+- 本程式只有一個頁面，沒有 history-based 子路由；在 Demo 根路徑重整即可。所有 JS/CSS 由 Vite 加上 base path，人台和燈具由程式生成，不需外部模型。將來新增子路由時請使用 hash router 或另設 GitHub Pages fallback。
+- `dist`、`node_modules`、cache、`.env`／`.env.*` 及本機憑證不提交。任何 `VITE_*` 變數都會成為公開前端內容，不可放 secrets。部署使用 GitHub 提供的短效 token/OIDC，不需另存 API key。
+
+本地正式版本驗證：
+
+```sh
+npm ci
+npm test
+npm run build
+npm run preview
+```
+
+打開 http://127.0.0.1:4173/lighting-simultaor/ 。GitHub Pages 只提供靜態檔案，瀏覽器需支援 WebGL 2。
