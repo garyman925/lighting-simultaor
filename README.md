@@ -98,4 +98,3 @@ npm run build
 npm run preview
 ```
 
-打開 http://127.0.0.1:4173/lighting-simultaor/ 。GitHub Pages 只提供靜態檔案，瀏覽器需支援 WebGL 2。
