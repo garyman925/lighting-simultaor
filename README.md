@@ -2,26 +2,6 @@
 
 可執行的 **Vertical Slice 01**。啟動即載入 Portrait Lighting Scene：一名原創程序式 humanoid、一台 full-frame 相機、120 × 120cm Softbox 及無縫背景。無帳戶、後端或外部角色下載。
 
-## 啟動
-
-需求：Node.js **22.12+**、支援 WebGL 2 的桌面瀏覽器。建議視窗 1280 × 720 以上，開啟硬體加速。
-
-```sh
-npm ci
-npm run dev
-```
-
-開啟 **http://127.0.0.1:5173/lighting-simultaor/**。伺服器只監聽本機。Windows 亦可雙擊 `START.cmd`，使用標準 Node.js 安裝的 npm。若 5173 已有此應用執行，直接開網址即可，不需再次啟動。
-
-更新依賴時可使用（並提交更新後的 package-lock.json）：
-
-```sh
-npm install
-npm run dev
-```
-
-若 Windows 的 npm 指令指向失效的 roaming 安裝，可使用 `"C:\Program Files\nodejs\npm.cmd"` 或 `START.cmd`。
-
 ## 第一個實驗
 
 1. 在右側選取 **120cm Softbox**，或直接點擊 Studio View 內的燈具。
