@@ -126,7 +126,7 @@ Rendering reuses the nine-light shadow pool and accumulates eight aperture passe
 
 Limitations: geometric direct-light approximation, not measured lux, spectral transport or a commercial product match. Angular profiles use spotlight cones/penumbrae; no measured IES profiles, interreflection, transmission or detailed umbrella fabric scattering. Fixed sample counts can leave grain/banding, especially in the nine-sample Studio view. Equipment remains hidden in Camera Preview and does not occlude other lights. Equal-depth light accumulation currently targets opaque materials. Ten mixed lights were interactively checked on this machine; CPU submission time is not a GPU FPS claim.
 
-**Catchlight / VS04 blocker:** the current small, rough procedural eyes lack a corneal reflection model. No fake eye overlay was added. `catchlightDescriptor` exposes shape, physical dimensions, central occlusion, Grid and aperture samples to a future corneal reflection adapter; it is also attached to equipment renderer metadata. Implement proper eyes/cornea and reflection visibility before claiming modifier-shaped catchlights.
+**Historical VS03 boundary:** corneal reflections were not implemented in VS03. VS04A below replaces that limitation.
 
 
 ## VS03.1 — Photography-oriented aiming
@@ -143,3 +143,20 @@ Limitations: geometric direct-light approximation, not measured lux, spectral tr
 限制：landmarks 為現有人台的近似解剖位置。角度控制維持精確半徑，不做器材碰撞／地板限制；低於 0.25m 會提示。Vertical numeric 限制 ±89° 避免極點方位不定。相機位於人物正上方時以相機方向的水平投影作 fallback，仍退化則使用 +Z。移動相機只改變角度基準，不會自動繞移已放好的燈；Auto Aim 跟隨目標而非保持方位角。光影仍是 VS03 的近似模型，無 GI／皮膚 SSS。
 
 驗證：63 項 automated tests（31 項 aiming + 32 項既有測試），TypeScript 與 production build；真實瀏覽器記錄見 `tests/VS03.1-VERIFICATION.md`。
+
+
+## VS04A — Portrait Head, Eyes & Physical Catchlight
+
+Original procedural head geometry now has narrower anatomical proportions, orbital hollows, cheek planes, a nose bridge/tip, shaped lips and chin. No third-party model or texture was introduced. Sclera, curved pigmented iris, pupil, eyelid skin and a separate curved corneal cap form each eye. Skin has a small `MeshPhysicalMaterial` baseline/interface for a later VS04B; no SSS, makeup, skin-tone creator or hair library was added.
+
+**Catchlight Test** installs a fixed 85mm camera, subject and exposure. Change the selected light’s Modifier/Size for A/B comparisons. **Preview Zoom** offers Fit 100%, Face 300% and Eyes 600%; these are sensor crops on a copied inspection camera and never mutate the capture camera, lens, exposure or scene document. Ordinary lighting presets retain their existing behavior.
+
+`emitterSurface` is shared by VS03 aperture sampling and the new corneal renderer. Each corneal fragment reflects the actual camera viewing ray about its curved surface normal, transforms that ray into each enabled emitter’s local coordinates, then intersects the rectangle, octagon, annular dish, circular aperture or shallow umbrella paraboloid. This is analytic geometry reflection, without a white-dot sprite, screen overlay, name-selected texture, cube camera or per-eye environment map. Translation, distance, arbitrary rotation, custom dimensions and model transforms therefore affect the result geometrically.
+
+Reflected radiance shares source power, exposure mode, temperature, optical gain, beam cutoff, penumbra and Grid transmission with direct illumination. Radiance is normalized by aperture area; distance reduces apparent area, not surface radiance. Disabled sources contribute zero. Each light is accumulated separately in linear HDR, then tone mapped once. Corneas render in a separate additive layer after opaque lighting, with the same depth buffer, so they do not enter the opaque equal-depth accumulation. Camera Preview excludes Studio helpers and equipment visuals.
+
+Render Quality: **Draft** uses one shadow sample per fixture and one reduced-resolution batch; **Standard** uses four batches of nine (36 samples); **High** uses eight batches of nine (72 samples), with higher preview resolution. Pointer interaction and changing numeric light controls temporarily select Draft; 180ms after settling, selected quality resumes. Render targets, the shadow-light pool and corneal material are reused; changing lights does not rebuild the model or whole scene. Corneal work scales with visible eye pixels and enabled sources and needs no additional shadow maps. Legacy `low` / `balanced` scene settings map to Draft / Standard.
+
+Physical/visual limits: this remains a procedural lighting-study head, not a scanned photorealistic face. Reflection is a smooth dielectric first-surface approximation (2.5% normal-incidence Fresnel), without corneal refraction, tear film, rough microfacet integration or indirect scene reflections. Eyelids use scene depth for camera visibility; incoming-ray nose occlusion uses a conservative head-local ellipsoid, not full scene ray tracing. Hands, other equipment, lashes and arbitrary objects are not traced as reflection blockers. Dish uses an annulus and umbrella a uniform shallow paraboloid, not measured reflector/fabric scattering. Existing 512px shadow maps can alias at extreme eye zoom; profiles are generic, uncalibrated and not lux predictions. Skin SSS and material customization remain VS04B work.
+
+Validation and browser evidence: `tests/VS04A-VERIFICATION.md`.

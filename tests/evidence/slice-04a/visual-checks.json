@@ -1,0 +1,376 @@
+{
+  "checks": [
+    {
+      "name": "dish-55",
+      "stats": "26.2 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "dish-70",
+      "stats": "21.5 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "stripbox",
+      "stats": "18.3 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "stripbox-grid",
+      "stats": "16.0 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "disabled",
+      "stats": "5.5 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "octabox",
+      "stats": "5.0 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "two-lights",
+      "stats": "5.8 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "portrait-fit",
+      "stats": "6.2 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "zoom preserves capture/model/exposure",
+      "pass": true
+    },
+    {
+      "name": "softbox",
+      "stats": "57.1 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "far",
+      "stats": "25.4 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "right",
+      "stats": "19.4 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "softbox",
+      "stats": "52.3 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "octabox",
+      "stats": "23.0 ms CPU · 9 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "softbox",
+      "stats": "46.5 ms CPU · 9 shadow samples/WebGL 2"
+    },
+    {
+      "name": "Face Chest Center aiming controls",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 3 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 4 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 5 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 6 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 7 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 8 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 9 lights",
+      "pass": true
+    },
+    {
+      "name": "duplicate to 10 lights",
+      "pass": true
+    },
+    {
+      "name": "10-light numeric edit",
+      "elapsedMs": 68,
+      "stats": "2.5 ms CPU · 1 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "rotation snap",
+      "pass": true
+    },
+    {
+      "name": "Umbrella switch at 10 lights",
+      "pass": true
+    },
+    {
+      "name": "Snoot switch at 10 lights",
+      "pass": true
+    },
+    {
+      "name": "Bare Reflector switch at 10 lights",
+      "pass": true
+    },
+    {
+      "name": "10-light Top view",
+      "pass": true
+    },
+    {
+      "name": "10-light Front view",
+      "pass": true
+    },
+    {
+      "name": "10-light Side view",
+      "pass": true
+    },
+    {
+      "name": "10-light Perspective view",
+      "pass": true
+    },
+    {
+      "name": "10-light Orbit Pan Zoom preserve capture and lights",
+      "pass": true
+    },
+    {
+      "name": "10-light Gizmo translate",
+      "before": "1.05",
+      "after": "1.22",
+      "pass": true
+    },
+    {
+      "name": "10-light Gizmo rotate",
+      "before": "8.90",
+      "after": "8.90",
+      "pass": true,
+      "beforeQuaternion": [
+        -0.09912681435906806,
+        0.3155664282971709,
+        0.033167368121695066,
+        0.9431286389982383
+      ],
+      "afterQuaternion": [
+        0.14835050368717817,
+        0.296229416456214,
+        0.1137118190970689,
+        0.9366482173577267
+      ],
+      "deltaDegrees": 29.99999999999994,
+      "note": "Dragged X ring; Euler Z is not the changed component."
+    },
+    {
+      "name": "gizmo edits preserve other nine lights",
+      "pass": true
+    },
+    {
+      "name": "Reset restores one-light portrait",
+      "pass": true
+    },
+    {
+      "name": "lighting preset preserves edited camera and background",
+      "pass": true
+    },
+    {
+      "name": "Three-Light Preset",
+      "pass": true
+    },
+    {
+      "name": "browser runtime errors",
+      "count": 0,
+      "pass": true
+    },
+    {
+      "name": "production bundle runtime errors",
+      "pass": true,
+      "count": 0
+    }
+  ],
+  "finalShots": [
+    {
+      "name": "final-softbox",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "26.0 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-octabox",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "20.6 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-dish42",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "16.9 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-dish55",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "14.4 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-dish70",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "4.7 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-stripbox",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "2.9 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "strip-upright",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "2.5 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "strip-rotated",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 26
+      },
+      "stats": "2.1 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-far",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 109
+      },
+      "stats": "1.8 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-right",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.6 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-grid",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.5 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-disabled",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.7 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "right-near",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.7 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "right20",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.7 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "final-two-lights",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "1.5 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "ten-lights-draft",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "2.4 ms CPU · 1 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "ten-lights-standard",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 142
+      },
+      "stats": "3.3 ms CPU · 36 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "name": "production-softbox",
+      "rect": {
+        "height": 402,
+        "width": 440.5,
+        "x": 471.5,
+        "y": 251
+      },
+      "stats": "25.9 ms CPU · 72 shadow samples\n/\nWebGL 2"
+    }
+  ],
+  "errors": []
+}

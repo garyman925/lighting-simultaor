@@ -25,7 +25,7 @@ export interface SceneDocument {
   camera: CameraSpec;
   lights: LightSpec[];
   environment: { backgroundColor: string; floorColor: string; floorFollowsBackground: boolean; widthM: number; heightM: number; depthM: number; curveRadiusM: number };
-  render: { quality: 'balanced' | 'low'; previewMode: 'capture'; seed: number };
+  render: { quality: 'balanced' | 'low' | 'Draft' | 'Standard' | 'High'; previewMode: 'capture'; seed: number };
 }
 
 export function exposure(camera: CameraSpec, mode: 'continuous' | 'strobe' = 'continuous') {
@@ -63,6 +63,14 @@ export function makePortraitScene(): SceneDocument {
   };
   scene.lights[0]=placeLight(scene,scene.lights[0],{horizontal:-45,vertical:20,distance:1.9});
   return scene;
+}
+/** Deliberately fixed capture state for repeatable modifier comparisons. */
+export function makeCatchlightScene():SceneDocument {
+  const s=makePortraitScene();s.name='Catchlight Test';
+  const position:Vec3=[0,1.617,1.35];
+  s.camera={...s.camera,transform:{positionM:position,quaternion:lookAt(position,[0,1.595,.08])},focalLengthMm:85,fNumber:8,iso:100,shutterSeconds:1/125};
+  s.lights[0]=placeLight(s,{...s.lights[0],modifier:makeModifier('softbox','60x90')},{horizontal:-20,vertical:15,distance:1.1});
+  s.render.quality='High';return s;
 }
 export function getTransform(s: SceneDocument, selected: Selection): Transform { return selected==='camera'||selected==='model'?s[selected].transform:s.lights.find(l=>l.id===selected)?.transform??s.model.transform; }
 export function withTransform(s: SceneDocument, selected: Selection, t: Transform, manualRotation=false): SceneDocument {

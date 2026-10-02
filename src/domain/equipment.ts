@@ -33,11 +33,17 @@ export function gridEnabled(m:ModifierSpec){return equipment(m.equipmentId).grid
 export function withGrid(m:ModifierSpec,enabled:boolean):ModifierSpec{return {...m,accessories:equipment(m.equipmentId).gridCompatible?[{id:'grid',enabled}]:[]};}
 export function modifierLabel(m:ModifierSpec){const d=equipment(m.equipmentId);return `${d.displayName} ${Math.round(m.widthM*100)}${m.widthM===m.heightM?'':` × ${Math.round(m.heightM*100)}`}cm${gridEnabled(m)?' + Grid':''}`;}
 export function opticalParameters(m:ModifierSpec){const d=equipment(m.equipmentId),g=gridEnabled(m);return {spreadDeg:d.defaultSpreadDeg*(g?ACCESSORIES.grid.spreadMultiplier:1),penumbra:g?ACCESSORIES.grid.penumbra:d.renderer.penumbra,gain:d.renderer.gain*(g?ACCESSORIES.grid.transmission:1)};}
+/** Shared physical aperture for direct sampling and corneal ray intersections. */
+export function emitterSurface(m:ModifierSpec){
+  const d=equipment(m.equipmentId),widthM=m.widthM*d.renderer.apertureRatio,heightM=m.heightM*d.renderer.apertureRatio;
+  const areaFactor=d.shape==='rectangle'?1:d.shape==='octagon'?Math.SQRT1_2:Math.PI/4*(d.profile==='ring'?1-.25**2:1);
+  return {shape:d.shape,widthM,heightM,areaM2:widthM*heightM*areaFactor,centralOcclusion:d.profile==='ring'?.25:0};
+}
 /** Nine stratified aperture samples per pass. Circular apertures use equal-area polar strata;
  * dish uses an annulus around its central deflector; octagon clips radial extent to eight edges.
  * Total source weight remains one for every size. No image-space shadow blur. */
 export function apertureSamples(m:ModifierSpec,jitter=[0,0]) {
-  const d=equipment(m.equipmentId),samples=[];
+  const d=equipment(m.equipmentId),surface=emitterSurface(m),samples=[];
   for(let i=0;i<9;i++){
     const u=(i%3+.5+jitter[0])/3,v=(Math.floor(i/3)+.5+jitter[1])/3;
     let x=u-.5,y=v-.5,z=-.035;
@@ -48,7 +54,7 @@ export function apertureSamples(m:ModifierSpec,jitter=[0,0]) {
       x=r*Math.cos(theta);y=r*Math.sin(theta);
       if(d.shape==='umbrella')z+=.2*(1-4*r*r);
     }
-    samples.push({position:[x*m.widthM*d.renderer.apertureRatio,y*m.heightM*d.renderer.apertureRatio,z] as [number,number,number],weight:1/9});
+    samples.push({position:[x*surface.widthM,y*surface.heightM,z] as [number,number,number],weight:1/9});
   }
   return samples;
 }

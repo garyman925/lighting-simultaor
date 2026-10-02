@@ -7,6 +7,8 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { exposure, getTransform, sourcePower, verticalFov } from '../domain/scene';
 import type { SceneDocument, Selection, Transform, LightSpec, StudioView } from '../domain/scene';
 import { makeHumanoid } from './humanoid';
+import { updateCorneaEmitter } from './cornea';
+import { QUALITY,qualityName } from './quality';
 
 export interface FrameStats { ms:number; triangles:number; calls:number; samples:number; frames:number; }
 interface Callbacks { transform:(selection:Selection,t:Transform,restoreAim?:LightSpec['aiming'])=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
@@ -48,6 +50,10 @@ export class StudioRenderer {
   private lastStats=0;
   private contextLost=false;
   private batch=0;
+  private interacting=false;
+  private interactionTimer:ReturnType<typeof setTimeout>|undefined;
+  private inspect=1;
+  private inspectionCamera=new T.PerspectiveCamera();
   private sampleTarget=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType});
   private history=[new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType}),new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType})];
   private compositeScene=new T.Scene();
@@ -77,7 +83,12 @@ export class StudioRenderer {
     this.orbit.addEventListener('change',this.invalidateStudio);
     this.gizmo=new TransformControls(this.editor,studioView);this.gizmo.setSize(.82);this.gizmo.setSpace('world');
     this.overlay.add(this.gizmo.getHelper(),this.selectionBox,this.aimingArrow,this.aimingTarget);(this.selectionBox.material as T.LineBasicMaterial).depthTest=false;
-    this.gizmo.addEventListener('dragging-changed',e=>{this.orbit.enabled=!e.value;});
+    this.gizmo.addEventListener('dragging-changed',e=>{this.orbit.enabled=!e.value;this.setInteracting(!!e.value);});
+    this.orbit.addEventListener('start',()=>this.setInteracting(true));
+    this.orbit.addEventListener('end',()=>this.setInteracting(false));
+    this.listen(host.ownerDocument,'pointerdown',()=>this.setInteracting(true));
+    this.listen(host.ownerDocument,'pointerup',()=>this.setInteracting(false));
+    this.listen(host.ownerDocument,'pointercancel',()=>this.setInteracting(false));
     this.gizmo.addEventListener('mouseDown',()=>{this.dragBefore=structuredClone(getTransform(this.document,this.selected));const light=this.document.lights.find(l=>l.id===this.selected);this.dragBeforeAim=light?structuredClone(light.aiming??{target:'face',auto:false}):undefined;});
     this.gizmo.addEventListener('mouseUp',()=>{this.dragBefore=null;});
     this.gizmo.addEventListener('objectChange',()=>{
@@ -89,7 +100,7 @@ export class StudioRenderer {
     this.stage=this.makeStage();this.scene.add(this.stage);
     const grid=new T.GridHelper(10,20,0x6f7777,0x4b5354);grid.position.y=.002;(grid.material as T.Material).transparent=true;(grid.material as T.Material).opacity=.3;this.helpers.add(grid);
     for(let i=0;i<9;i++){
-      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(512,512);l.shadow.camera.near=.08;l.shadow.camera.far=15;l.shadow.bias=-.00015;l.shadow.normalBias=.002;
+      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(512,512);l.shadow.camera.near=.08;l.shadow.camera.far=15;l.shadow.bias=-.00008;l.shadow.normalBias=.0004;
       const target=new T.Object3D();this.scene.add(l,target);l.target=target;this.lights.push(l);this.targets.push(target);
     }
     this.resizeObserver=new ResizeObserver(()=>{const r=host.getBoundingClientRect();this.renderer.setSize(r.width,r.height,false);this.batch=0;this.invalidateStudio();});this.resizeObserver.observe(host);this.resizeObserver.observe(studioView);this.resizeObserver.observe(previewView);
@@ -128,7 +139,7 @@ export class StudioRenderer {
   update(s:SceneDocument){
     if(this.disposed)return;
     const previous=this.document;
-    const visualChanged=previous.model!==s.model||previous.camera!==s.camera||previous.environment!==s.environment||
+    const visualChanged=previous.render.quality!==s.render.quality||previous.model!==s.model||previous.camera!==s.camera||previous.environment!==s.environment||
       JSON.stringify(previous.lights.map(({name,...l})=>l))!==JSON.stringify(s.lights.map(({name,...l})=>l));
     this.document=s;
     for(const [id,rig] of this.rigs)if(!s.lights.some(l=>l.id===id)){
@@ -151,9 +162,18 @@ export class StudioRenderer {
     this.human.root.scale.setScalar(s.model.heightCm/175);this.human.skin.color.set(s.model.skinColor);
     this.shot.position.copy(this.cameraRig.position);this.shot.quaternion.copy(this.cameraRig.quaternion);this.shot.fov=verticalFov(s.camera.focalLengthMm);this.shot.updateProjectionMatrix();
     this.backdropMaterial.color.set(s.environment.backgroundColor);
-    if(visualChanged||this.frames===0){this.batch=0;this.callbacks.stats({ms:this.elapsed.at(-1)??0,triangles:0,calls:0,samples:0,frames:this.frames});this.invalidateStudio();}
+    if(visualChanged||this.frames===0){
+      if(this.frames>0){this.setInteracting(true);this.setInteracting(false);}
+      this.batch=0;this.callbacks.stats({ms:this.elapsed.at(-1)??0,triangles:0,calls:0,samples:0,frames:this.frames});this.invalidateStudio();
+    }
   }
   select(s:Selection){this.selected=s;const o=this.object(s);if(o)this.gizmo.attach(o);else this.gizmo.detach();this.invalidateStudio();}
+  setInspection(value:number){this.inspect=value;this.batch=0;this.invalidate();}
+  private setInteracting(value:boolean){
+    clearTimeout(this.interactionTimer);
+    if(value){if(!this.interacting){this.interacting=true;this.batch=0;this.invalidateStudio();}}
+    else this.interactionTimer=setTimeout(()=>{this.interacting=false;this.batch=0;this.invalidateStudio();},180);
+  }
   mode(m:'translate'|'rotate'){this.gizmo.setMode(m);this.invalidateStudio();}
   rotationSnap(degrees:number){this.gizmo.setRotationSnap(snapRadians(degrees));this.invalidateStudio();}
   cancelDrag(){if(this.dragBefore){const before=this.dragBefore;this.gizmo.reset();this.callbacks.transform(this.selected,before,this.dragBeforeAim);this.dragBefore=null;}this.orbit.enabled=true;}
@@ -171,9 +191,11 @@ export class StudioRenderer {
   private positionSamples(light:LightSpec|undefined,jitter:number[]){
     const rig=light?this.rigs.get(light.id):undefined;
     const samples=light?apertureSamples(light.modifier,jitter):[],optics=light?opticalParameters(light.modifier):null;
+    const draft=this.interacting||qualityName(this.document.render.quality)==='Draft';
     this.lights.forEach((l,i)=>{
-      if(!light||!rig||!optics){l.intensity=0;return;}
-      const sample=samples[i];
+      l.visible=!!light&&(!draft||i===0);
+      if(!light||!rig||!optics||!l.visible){l.intensity=0;return;}
+      const sample=draft?{position:samples[4].position,weight:1}:samples[i];
       const pos=new T.Vector3(...sample.position).applyMatrix4(rig.root.matrixWorld);
       l.angle=optics.spreadDeg*Math.PI/360;l.penumbra=optics.penumbra;      l.position.copy(pos);this.targets[i].position.copy(pos).add(new T.Vector3(0,0,-1).applyQuaternion(rig.root.quaternion));
       l.color.copy(kelvin(light.source.temperatureK));l.intensity=3.8*exposure(this.document.camera,light.source.mode)*sourcePower(light)*sample.weight*optics.gain;
@@ -197,6 +219,11 @@ export class StudioRenderer {
       this.positionSamples(light,jitter);this.renderer.shadowMap.needsUpdate=true;this.renderer.render(this.scene,camera);
     });
     originals.forEach(({m,blending,depthFunc,depthWrite,color})=>{m.blending=blending;m.depthFunc=depthFunc;m.depthWrite=depthWrite;if(color&&(m instanceof T.MeshBasicMaterial||m instanceof T.LineBasicMaterial))m.color.copy(color);});
+    // Corneal reflections use all enabled emitters, once each, after the opaque sum.
+    // Layer 1 keeps the transparent cap out of equal-depth multi-light accumulation.
+    const mask=camera.layers.mask;camera.layers.set(1);this.renderer.shadowMap.enabled=false;
+    for(const light of enabled){updateCorneaEmitter(this.human.cornea,light,this.document.camera,kelvin(light.source.temperatureK),this.human.root.matrixWorld);this.renderer.render(this.scene,camera);}
+    camera.layers.mask=mask;this.renderer.shadowMap.enabled=true;
     this.rigs.forEach(r=>{r.root.visible=true;r.stand.visible=true;});this.cameraRig.visible=true;
   }
   private pick(e:PointerEvent){
@@ -216,7 +243,8 @@ export class StudioRenderer {
     if(this.editor instanceof T.PerspectiveCamera)this.editor.aspect=a.w/a.h;
     else {this.orthographic.left=-3*a.w/a.h;this.orthographic.right=3*a.w/a.h;this.orthographic.top=3;this.orthographic.bottom=-3;}
     this.editor.updateProjectionMatrix();
-    const sw=Math.round(a.w*this.renderer.getPixelRatio()),sh=Math.round(a.h*this.renderer.getPixelRatio());
+    const quality=QUALITY[this.interacting?'Draft':qualityName(this.document.render.quality)];
+    const sw=Math.round(a.w*this.renderer.getPixelRatio()*(this.interacting?.65:1)),sh=Math.round(a.h*this.renderer.getPixelRatio()*(this.interacting?.65:1));
     if(this.studioTarget.width!==sw||this.studioTarget.height!==sh){this.studioTarget.setSize(sw,sh);this.studioDirty=true;}
     if(this.studioDirty){this.renderLighting(this.studioTarget,this.editor,true,[0,0]);this.studioDirty=false;}
     this.renderer.setRenderTarget(null);this.renderer.setScissorTest(true);this.renderer.setViewport(a.x,a.y,a.w,a.h);this.renderer.setScissor(a.x,a.y,a.w,a.h);this.renderer.setClearColor('#252d31');this.renderer.clear();
@@ -236,12 +264,19 @@ export class StudioRenderer {
     const b=this.viewport(this.previewView);this.renderer.setViewport(b.x,b.y,b.w,b.h);this.renderer.setScissor(b.x,b.y,b.w,b.h);this.renderer.setClearColor('#111516');this.renderer.clear();
     let w=b.w,h=w/1.5;if(h>b.h){h=b.h;w=h*1.5;}
     {
-      const rw=Math.max(1,Math.min(1200,Math.round(w*this.renderer.getPixelRatio()))),rh=Math.round(rw/1.5);
+      const rw=Math.max(1,Math.min(quality.maxWidth,Math.round(w*this.renderer.getPixelRatio()*quality.scale))),rh=Math.max(1,Math.round(rw/1.5));
+      if(this.sampleTarget.samples!==quality.samples){this.sampleTarget.dispose();this.sampleTarget.samples=quality.samples;this.batch=0;}
       if(this.sampleTarget.width!==rw||this.sampleTarget.height!==rh){this.sampleTarget.setSize(rw,rh);this.history.forEach(t=>t.setSize(rw,rh));this.batch=0;}
-      if(this.batch<8){
+      if(this.batch<quality.batches){
         // Eight deterministic strata offsets, nine points per batch. Accumulate before tone mapping.
         const jitter=[[-.31,.17],[.23,-.29],[-.09,-.11],[.37,.39],[-.42,-.37],[.06,.33],[.29,.02],[-.22,-.43]][this.batch];
-        this.renderLighting(this.sampleTarget,this.shot,false,jitter);
+        this.inspectionCamera.copy(this.shot);
+        if(this.inspect>1){
+          // Sensor crop about the projected face. The capture camera is never mutated.
+          this.shot.updateMatrixWorld();const face=new T.Vector3(0,1.617,.09).applyMatrix4(this.human.root.matrixWorld).project(this.shot);
+          const zoom=this.inspect;this.inspectionCamera.setViewOffset(1500,1000,(face.x+1)*750-750/zoom,(1-face.y)*500-500/zoom,1500/zoom,1000/zoom);
+        }else this.inspectionCamera.clearViewOffset();
+        this.renderLighting(this.sampleTarget,this.inspectionCamera,false,jitter);
         const destination=this.history[this.batch%2],previous=this.history[(this.batch+1)%2];
         if(this.batch===0){this.renderer.setRenderTarget(previous);this.renderer.setClearColor(0);this.renderer.clear();}
         this.composite.uniforms.previous.value=previous.texture;this.composite.uniforms.sampleFrame.value=this.sampleTarget.texture;this.composite.uniforms.weight.value=1/(this.batch+1);
@@ -251,10 +286,10 @@ export class StudioRenderer {
     }
     this.helpers.visible=true;this.cameraRig.visible=true;
     this.frames++;const ms=performance.now()-start;this.elapsed.push(ms);if(this.elapsed.length>60)this.elapsed.shift();
-    if(start-this.lastStats>250||this.frames<3||this.batch===8){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.batch*9,frames:this.frames});this.lastStats=start;}
-    if(this.batch<8)this.invalidate();
+    if(start-this.lastStats>250||this.frames<3||this.batch===quality.batches){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.batch*(quality===QUALITY.Draft?1:9),frames:this.frames});this.lastStats=start;}
+    if(this.batch<quality.batches)this.invalidate();
   };
-  dispose(){this.disposed=true;cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();this.aimingArrow.dispose();this.aimingTarget.geometry.dispose();this.aimingTarget.material.dispose();
+  dispose(){this.disposed=true;clearTimeout(this.interactionTimer);cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();this.aimingArrow.dispose();this.aimingTarget.geometry.dispose();this.aimingTarget.material.dispose();
     const geometry=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();this.scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){geometry.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
     geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.lights.forEach(l=>l.shadow.dispose());this.studioTarget.dispose();this.selectionBox.geometry.dispose();(this.selectionBox.material as T.LineBasicMaterial).dispose();this.sampleTarget.dispose();this.history.forEach(t=>t.dispose());this.composite.dispose();this.displayMaterial.dispose();this.compositeScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.displayScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.renderer.dispose();this.renderer.domElement.remove();
   }
