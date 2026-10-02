@@ -29,3 +29,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline-offset:2px
 
 .portrait-tools{display:flex;gap:8px;align-items:center}.portrait-tools button,.portrait-tools select{background:#263334;color:#d8e5df;border:1px solid #455653;border-radius:4px;padding:5px;font-size:10px}.portrait-tools button[aria-pressed=true]{color:#90e8cf;border-color:#6ba893}
 .studio-surface{user-select:none}
+
+.skin-swatches {flex-wrap:wrap;gap:7px}.skin-swatches button {font-size:10px;text-shadow:0 1px 3px #000;color:white}.skin-swatches button[aria-pressed="true"]{outline:2px solid #e8c58c;outline-offset:2px}.skin-numeric{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.skin-numeric label{font-size:11px;color:#b9c6c1}.skin-numeric input{display:block;width:100%;margin-top:5px;background:#131a1c;border:1px solid #455152;border-radius:4px;padding:7px;color:#e8e9e2}details summary{cursor:pointer;font-size:11px;color:#b9c6c1}.equipment-presets small{font-size:10px;color:#aab6b0}

@@ -1,14 +1,16 @@
+import { makeSkinMaterial } from './skin';
+import { skinMask } from '../domain/skin';
+import type { SkinRegion } from '../domain/skin';
 import * as T from 'three';
 import { makeCorneaMaterial } from './cornea';
 
-export const PORTRAIT_MATERIAL={roughness:.48,metalness:0,ior:1.4,specularIntensity:.35};
 
 /** Original procedural study mannequin: no downloaded or unlicensed character assets. */
 export function makeHumanoid() {
   const root=new T.Group(); root.name='Humanoid';
-  const skin=new T.MeshPhysicalMaterial({color:'#BD8867',...PORTRAIT_MATERIAL});
+  const skinSystem=makeSkinMaterial(),skin=skinSystem.material;
   const cornea=makeCorneaMaterial();
-  const lips=new T.MeshStandardMaterial({color:'#80513f',roughness:.55});
+  const lips=skin;
   const hair=new T.MeshStandardMaterial({color:'#241c17',roughness:.72});
   const shirt=new T.MeshStandardMaterial({color:'#9aa5a2',roughness:.92});
   const trousers=new T.MeshStandardMaterial({color:'#3c4548',roughness:.88});
@@ -17,10 +19,16 @@ export function makeHumanoid() {
   const iris=new T.MeshStandardMaterial({color:'#ffffff',roughness:.85});
   const pupil=new T.MeshStandardMaterial({color:'#060504',roughness:1});
   const geometries:T.BufferGeometry[]=[];
-  function mesh(g:T.BufferGeometry,m:T.Material,pos:number[],scale=[1,1,1]) {
-    g.normalizeNormals();geometries.push(g); const o=new T.Mesh(g,m); o.position.set(pos[0],pos[1],pos[2]);o.scale.set(scale[0],scale[1],scale[2]);o.castShadow=true;o.receiveShadow=true;root.add(o);return o;
+  function mesh(g:T.BufferGeometry,m:T.Material,pos:number[],scale=[1,1,1],region:SkinRegion='skin') {
+    g.normalizeNormals();geometries.push(g); const o=new T.Mesh(g,m); o.position.set(pos[0],pos[1],pos[2]);o.scale.set(scale[0],scale[1],scale[2]);o.castShadow=true;o.receiveShadow=true;root.add(o);
+    if(m===skin){
+      o.updateMatrix();const a=g.getAttribute('position'),mask:number[]=[];
+      for(let i=0;i<a.count;i++){const v=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(o.matrix);mask.push(...skinMask(v.x,v.y,v.z,region));}
+      g.setAttribute('skinMask',new T.Float32BufferAttribute(mask,4));
+    }
+    return o;
   }
-  function ellipsoid(pos:number[],scale:number[],mat:T.Material=skin) { return mesh(new T.SphereGeometry(1,32,24),mat,pos,scale); }
+  function ellipsoid(pos:number[],scale:number[],mat:T.Material=skin,region:SkinRegion='skin') { return mesh(new T.SphereGeometry(1,32,24),mat,pos,scale,region); }
   function limb(a:T.Vector3,b:T.Vector3,r1:number,r2:number,mat:T.Material) {
     const d=b.clone().sub(a); const o=mesh(new T.CylinderGeometry(r2,r1,d.length(),24),mat,a.clone().add(b).multiplyScalar(.5).toArray());o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return o;
   }
@@ -42,7 +50,7 @@ export function makeHumanoid() {
     limb(elbow,wrist,.047,.027,skin);ellipsoid([side*.31,.79,.045],[.035,.076,.025]);
     for(let f=0;f<4;f++) ellipsoid([side*(.289+f*.014),.726+(f===0?.01:0),.047],[.008,.04,.009]);
     const thumb=ellipsoid([side*.266,.783,.066],[.013,.038,.014]);thumb.rotation.z=side*-.4;
-    ellipsoid([side*.095,1.58,-.008],[.021,.04,.02]);
+    ellipsoid([side*.095,1.58,-.008],[.021,.04,.02],skin,'ear');
   }
   // A single smooth face surface with nose bridge/tip, chin, orbital hollows and cheek bones.
   const faceG=new T.SphereGeometry(1,160,128),a=faceG.getAttribute('position');
@@ -107,13 +115,13 @@ export function makeHumanoid() {
     const lids=mesh(lidG,skin,[0,0,0]);lids.name='Orbital eyelid skin';lids.castShadow=false;
     const brow=ellipsoid([side*.038,1.643,.094],[.024,.003,.004],hair);brow.rotation.z=side*-.09;
   }
-  ellipsoid([-.011,1.535,.104],[.017,.0035,.005],lips);
-  ellipsoid([.011,1.535,.104],[.017,.0035,.005],lips);
-  ellipsoid([0,1.528,.104],[.026,.0045,.006],lips);
+  ellipsoid([-.011,1.535,.104],[.017,.0035,.005],lips,'lip');
+  ellipsoid([.011,1.535,.104],[.017,.0035,.005],lips,'lip');
+  ellipsoid([0,1.528,.104],[.026,.0045,.006],lips,'lip');
   // Close-cropped cap, with an asymmetric swept crown.
   mesh(new T.SphereGeometry(1,48,32,0,Math.PI*2,0,Math.PI*.43),hair,[0,1.594,-.008],[.095,.16,.104]);
   for(let i=0;i<8;i++) {
     const strand=ellipsoid([-.057+i*.016,1.728+Math.sin(i*.5)*.008,-.003],[.025,.013,.079],hair);strand.rotation.y=-.3;
   }
-  return {root,skin,cornea,dispose:()=>{geometries.forEach(g=>g.dispose());[skin,lips,hair,shirt,trousers,shoe,white,iris,pupil,cornea].forEach(m=>m.dispose());}};
+  return {root,skin,skinSystem,cornea,dispose:()=>{geometries.forEach(g=>g.dispose());[skin,hair,shirt,trousers,shoe,white,iris,pupil,cornea].forEach(m=>m.dispose());}};
 }

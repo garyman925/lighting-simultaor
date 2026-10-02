@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 2,
+  "id": "portrait-01",
+  "name": "Portrait Material Test",
+  "units": "m",
+  "catalogVersion": "generic-equipment-1",
+  "createdAt": "2026-09-30T00:00:00Z",
+  "updatedAt": "2026-10-02T10:47:01.788Z",
+  "camera": {
+    "id": "camera-01",
+    "transform": {
+      "positionM": [
+        0,
+        1.617,
+        1.35
+      ],
+      "quaternion": [
+        -0.00866044284044453,
+        0,
+        0,
+        0.999962497661691
+      ]
+    },
+    "sensorWidthMm": 36,
+    "sensorHeightMm": 24,
+    "focalLengthMm": 85,
+    "fNumber": 8,
+    "shutterSeconds": 0.008,
+    "iso": 100,
+    "whiteBalanceK": 5600,
+    "exposureCompEv": 0
+  },
+  "model": {
+    "id": "model-01",
+    "assetId": "human-base-01",
+    "transform": {
+      "positionM": [
+        0,
+        0,
+        0
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "heightCm": 175,
+    "bodyPreset": "regular",
+    "skinColor": "#BD8867",
+    "skin": {
+      "skinTone": "#BD8867",
+      "skinFinish": "Natural",
+      "roughness": 0.43,
+      "reflectance": 0.035,
+      "subsurface": 0.45,
+      "regionVariation": 1
+    },
+    "hairStyle": "short",
+    "hairColor": "#201916"
+  },
+  "lights": [
+    {
+      "id": "light-key",
+      "name": "Key light",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          -0.5403232569518972,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "beauty-dish",
+        "sizeId": "42",
+        "widthM": 0.42,
+        "heightM": 0.42,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-26c179b2-3a05-41df-9e44-f22a3f47c3cc",
+      "name": "Key light copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          -0.2403232569518972,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "softbox",
+        "sizeId": "60x90",
+        "widthM": 0.6,
+        "heightM": 0.9,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-198cfc3d-b0ba-4573-99e0-48a448bca181",
+      "name": "Key light copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          0.059676743048102776,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "octabox",
+        "sizeId": "90",
+        "widthM": 0.9,
+        "heightM": 0.9,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-264c0cda-b87d-4d68-a3fc-f1abbe494364",
+      "name": "Key light copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          0.35967674304810276,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "stripbox",
+        "sizeId": "30x120",
+        "widthM": 0.3,
+        "heightM": 1.2,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-5a38aba5-88ab-4af9-a5e9-9d49247c265f",
+      "name": "Key light copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          0.6596767430481028,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "umbrella",
+        "sizeId": "85",
+        "widthM": 0.85,
+        "heightM": 0.85,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-9347e143-9962-4375-b307-a4b0078d75a9",
+      "name": "Key light copy copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          0.9596767430481028,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "reflector",
+        "sizeId": "18",
+        "widthM": 0.18,
+        "heightM": 0.18,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-25481726-f604-4e49-84e0-5361c96557c0",
+      "name": "Key light copy copy copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.2596767430481028,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "snoot",
+        "sizeId": "6",
+        "widthM": 0.06,
+        "heightM": 0.06,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-42b5d825-3bfb-43b5-9a3e-2a33e353eaea",
+      "name": "Key light copy copy copy copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.5596767430481029,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "beauty-dish",
+        "sizeId": "42",
+        "widthM": 0.42,
+        "heightM": 0.42,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-7d04d698-c583-4f30-9811-25afb240400b",
+      "name": "Key light copy copy copy copy copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          1.859676743048103,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "softbox",
+        "sizeId": "60x90",
+        "widthM": 0.6,
+        "heightM": 0.9,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    },
+    {
+      "id": "light-c3413a6f-39d1-4cee-bc1c-d7ca22056e62",
+      "name": "Key light copy copy copy copy copy copy copy copy copy",
+      "enabled": true,
+      "fixtureId": "generic-led-200",
+      "transform": {
+        "positionM": [
+          2.1596767430481028,
+          1.993323164824519,
+          1.0358673335517798
+        ],
+        "quaternion": [
+          -0.16773125949652062,
+          -0.2548870022441787,
+          -0.04494345552754777,
+          0.9512512425641977
+        ]
+      },
+      "source": {
+        "mode": "continuous",
+        "dimmerPercent": 5,
+        "temperatureK": 5600
+      },
+      "modifier": {
+        "equipmentId": "octabox",
+        "sizeId": "90",
+        "widthM": 0.9,
+        "heightM": 0.9,
+        "accessories": []
+      },
+      "aiming": {
+        "target": "face",
+        "auto": false
+      }
+    }
+  ],
+  "environment": {
+    "backgroundColor": "#887b6f",
+    "floorColor": "#887b6f",
+    "floorFollowsBackground": true,
+    "widthM": 8,
+    "heightM": 5,
+    "depthM": 10,
+    "curveRadiusM": 1
+  },
+  "render": {
+    "quality": "Standard",
+    "previewMode": "capture",
+    "seed": 42
+  }
+}

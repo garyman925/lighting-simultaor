@@ -1,0 +1,159 @@
+{
+  "checks": [
+    {
+      "name": "Matte roughness",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Glossy roughness",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Numeric roughness immediate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Numeric reflectance immediate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Tone preserves F0 and exposure",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "High refinement",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Draft sample budget",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Light switch off",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Production A/B fixes camera model exposure position",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Ten independent lights",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "All seven equipment in production",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Ten-light isolated editing",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Studio view Top",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Studio view Front",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Studio view Side",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Studio view Perspective",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Studio navigation preserves capture",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Selected Standard quality resumes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Production Natural selection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Production Matte selection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Production translate gizmo drag",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Aim shortcut",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Strobe shutter sync limit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "600 percent preserves camera/model",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exposure and background controls",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Empty scene disables A/B",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Re-add after empty scene",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Production console clean",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "performance": [
+    {
+      "scenario": "ten mixed lights Standard settled",
+      "stats": "12.7 ms CPU · 13.1 ms GPU · 36 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "scenario": "ten mixed lights Draft settled",
+      "stats": "11.2 ms CPU · 11.7 ms GPU · 1 shadow samples\n/\nWebGL 2"
+    },
+    {
+      "scenario": "two numeric light edits",
+      "elapsedMs": 25.435899999924004
+    }
+  ],
+  "note": "Timing is a rolling mean of recent submitted frames, mixing interaction and refinement; not FPS. Cold shader compilation and background scheduling produced large outliers. Final code clears the measurement epoch on visibility changes."
+}

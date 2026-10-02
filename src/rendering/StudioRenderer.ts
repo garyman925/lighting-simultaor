@@ -1,3 +1,6 @@
+import { GpuTimer } from './timing';
+import { resolveSkin } from '../domain/skin';
+import { SKIN_SHADOW_NEAR,SKIN_SHADOW_FAR } from './skin';
 import { aimPoint, snapRadians } from '../domain/aiming';
 import { apertureSamples, opticalParameters, catchlightDescriptor } from '../domain/equipment';
 import { makeEquipmentVisual } from './equipmentVisual';
@@ -10,10 +13,11 @@ import { makeHumanoid } from './humanoid';
 import { updateCorneaEmitter } from './cornea';
 import { QUALITY,qualityName } from './quality';
 
-export interface FrameStats { ms:number; triangles:number; calls:number; samples:number; frames:number; }
+export interface FrameStats { gpuMs?:number|null; gpuSupported?:boolean; ms:number; triangles:number; calls:number; samples:number; frames:number; }
 interface Callbacks { transform:(selection:Selection,t:Transform,restoreAim?:LightSpec['aiming'])=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
 export class StudioRenderer {
   private renderer:T.WebGLRenderer;
+  private gpu:GpuTimer;
   private scene=new T.Scene();
   private perspective=new T.PerspectiveCamera(43,1,.05,100);
   private orthographic=new T.OrthographicCamera(-4,4,3,-3,.05,100);
@@ -67,6 +71,7 @@ export class StudioRenderer {
   constructor(private host:HTMLElement,private studioView:HTMLElement,private previewView:HTMLElement,document:SceneDocument,private callbacks:Callbacks) {
     this.document=document;
     this.renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+    this.gpu=new GpuTimer(this.renderer.getContext() as WebGL2RenderingContext);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
     this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.shadowMap.autoUpdate=false;
@@ -100,14 +105,14 @@ export class StudioRenderer {
     this.stage=this.makeStage();this.scene.add(this.stage);
     const grid=new T.GridHelper(10,20,0x6f7777,0x4b5354);grid.position.y=.002;(grid.material as T.Material).transparent=true;(grid.material as T.Material).opacity=.3;this.helpers.add(grid);
     for(let i=0;i<9;i++){
-      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(512,512);l.shadow.camera.near=.08;l.shadow.camera.far=15;l.shadow.bias=-.00008;l.shadow.normalBias=.0004;
+      const l=new T.SpotLight(0xffffff,1,0,Math.PI/3,.35,2);l.castShadow=true;l.shadow.mapSize.set(512,512);l.shadow.camera.near=SKIN_SHADOW_NEAR;l.shadow.camera.far=SKIN_SHADOW_FAR;l.shadow.bias=-.00008;l.shadow.normalBias=.0004;
       const target=new T.Object3D();this.scene.add(l,target);l.target=target;this.lights.push(l);this.targets.push(target);
     }
     this.resizeObserver=new ResizeObserver(()=>{const r=host.getBoundingClientRect();this.renderer.setSize(r.width,r.height,false);this.batch=0;this.invalidateStudio();});this.resizeObserver.observe(host);this.resizeObserver.observe(studioView);this.resizeObserver.observe(previewView);
     this.listen(studioView,'pointerdown',((e:PointerEvent)=>{this.pointerStart=[e.clientX,e.clientY];}) as EventListener);
     this.listen(studioView,'pointerup',((e:PointerEvent)=>this.pick(e)) as EventListener);
     this.listen(this.renderer.domElement,'webglcontextlost',((e:Event)=>{e.preventDefault();this.contextLost=true;this.callbacks.error('繪圖連線中斷。請重新載入；目前場景可先匯出備份。');}) as EventListener);
-    this.listen(documentOwner(),'visibilitychange',()=>{if(!window.document.hidden)this.invalidate();});
+    this.listen(documentOwner(),'visibilitychange',()=>{this.gpu.reset();this.elapsed=[];if(!window.document.hidden)this.invalidate();});
     this.listen(studioView,'pointercancel',()=>{this.orbit.enabled=true;});
     this.update(document);this.select('light-key');
   }
@@ -159,12 +164,12 @@ export class StudioRenderer {
       rig.root.updateMatrixWorld(true);
     }
     for(const id of ['camera','model'] as const){const t=getTransform(s,id),o=this.object(id)!;o.position.fromArray(t.positionM);o.quaternion.fromArray(t.quaternion);}
-    this.human.root.scale.setScalar(s.model.heightCm/175);this.human.skin.color.set(s.model.skinColor);
+    this.human.root.scale.setScalar(s.model.heightCm/175);this.human.skinSystem.update(resolveSkin(s.model.skin,s.model.skinColor),qualityName(s.render.quality));
     this.shot.position.copy(this.cameraRig.position);this.shot.quaternion.copy(this.cameraRig.quaternion);this.shot.fov=verticalFov(s.camera.focalLengthMm);this.shot.updateProjectionMatrix();
     this.backdropMaterial.color.set(s.environment.backgroundColor);
     if(visualChanged||this.frames===0){
       if(this.frames>0){this.setInteracting(true);this.setInteracting(false);}
-      this.batch=0;this.callbacks.stats({ms:this.elapsed.at(-1)??0,triangles:0,calls:0,samples:0,frames:this.frames});this.invalidateStudio();
+      this.batch=0;this.callbacks.stats({gpuMs:this.gpu.milliseconds,gpuSupported:this.gpu.supported,ms:this.elapsed.at(-1)??0,triangles:0,calls:0,samples:0,frames:this.frames});this.invalidateStudio();
     }
   }
   select(s:Selection){this.selected=s;const o=this.object(s);if(o)this.gizmo.attach(o);else this.gizmo.detach();this.invalidateStudio();}
@@ -240,10 +245,13 @@ export class StudioRenderer {
     this.frame=0;if(this.disposed||this.contextLost)return;const start=performance.now();this.renderer.info.reset();
     const a=this.viewport(this.studioView);
     if(a.w<1||a.h<1)return;
+    this.gpu.begin();
     if(this.editor instanceof T.PerspectiveCamera)this.editor.aspect=a.w/a.h;
     else {this.orthographic.left=-3*a.w/a.h;this.orthographic.right=3*a.w/a.h;this.orthographic.top=3;this.orthographic.bottom=-3;}
     this.editor.updateProjectionMatrix();
-    const quality=QUALITY[this.interacting?'Draft':qualityName(this.document.render.quality)];
+    const effectiveQuality=this.interacting?'Draft':qualityName(this.document.render.quality);
+    const quality=QUALITY[effectiveQuality];
+    this.human.skinSystem.update(resolveSkin(this.document.model.skin,this.document.model.skinColor),effectiveQuality);
     const sw=Math.round(a.w*this.renderer.getPixelRatio()*(this.interacting?.65:1)),sh=Math.round(a.h*this.renderer.getPixelRatio()*(this.interacting?.65:1));
     if(this.studioTarget.width!==sw||this.studioTarget.height!==sh){this.studioTarget.setSize(sw,sh);this.studioDirty=true;}
     if(this.studioDirty){this.renderLighting(this.studioTarget,this.editor,true,[0,0]);this.studioDirty=false;}
@@ -285,11 +293,12 @@ export class StudioRenderer {
       this.displayMaterial.map=this.history[(this.batch-1)%2].texture;this.renderer.setRenderTarget(null);this.renderer.setScissorTest(true);this.renderer.setViewport(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.setScissor(b.x+(b.w-w)/2,b.y+(b.h-h)/2,w,h);this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.render(this.displayScene,this.screenCamera);
     }
     this.helpers.visible=true;this.cameraRig.visible=true;
+    this.gpu.end();
     this.frames++;const ms=performance.now()-start;this.elapsed.push(ms);if(this.elapsed.length>60)this.elapsed.shift();
-    if(start-this.lastStats>250||this.frames<3||this.batch===quality.batches){this.callbacks.stats({ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.batch*(quality===QUALITY.Draft?1:9),frames:this.frames});this.lastStats=start;}
+    if(start-this.lastStats>250||this.frames<3||this.batch===quality.batches){this.callbacks.stats({gpuMs:this.gpu.milliseconds,gpuSupported:this.gpu.supported,ms:this.elapsed.reduce((a,b)=>a+b,0)/this.elapsed.length,triangles:this.renderer.info.render.triangles,calls:this.renderer.info.render.calls,samples:this.batch*(quality===QUALITY.Draft?1:9),frames:this.frames});this.lastStats=start;}
     if(this.batch<quality.batches)this.invalidate();
   };
-  dispose(){this.disposed=true;clearTimeout(this.interactionTimer);cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();this.aimingArrow.dispose();this.aimingTarget.geometry.dispose();this.aimingTarget.material.dispose();
+  dispose(){this.gpu.dispose();this.disposed=true;clearTimeout(this.interactionTimer);cancelAnimationFrame(this.frame);this.resizeObserver.disconnect();this.orbit.dispose();this.gizmo.dispose();this.disposers.forEach(f=>f());this.human.dispose();this.aimingArrow.dispose();this.aimingTarget.geometry.dispose();this.aimingTarget.material.dispose();
     const geometry=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();this.scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){geometry.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}});
     geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.lights.forEach(l=>l.shadow.dispose());this.studioTarget.dispose();this.selectionBox.geometry.dispose();(this.selectionBox.material as T.LineBasicMaterial).dispose();this.sampleTarget.dispose();this.history.forEach(t=>t.dispose());this.composite.dispose();this.displayMaterial.dispose();this.compositeScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.displayScene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.renderer.dispose();this.renderer.domElement.remove();
   }

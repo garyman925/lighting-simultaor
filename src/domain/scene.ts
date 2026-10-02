@@ -1,3 +1,5 @@
+import { defaultSkin,resolveSkin } from './skin';
+import type { SkinMaterialParameters } from './skin';
 import { placeLight, syncAutoAim } from './aiming';
 import type { AimTarget } from './aiming';
 import { makeModifier, switchModifier, withGrid } from './equipment';
@@ -21,7 +23,7 @@ export interface CameraSpec {
 export interface SceneDocument {
   schemaVersion: 2; id: string; name: string; units: 'm'; catalogVersion: string;
   createdAt: string; updatedAt: string;
-  model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; hairStyle: string; hairColor: string };
+  model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; skin?:SkinMaterialParameters; hairStyle: string; hairColor: string };
   camera: CameraSpec;
   lights: LightSpec[];
   environment: { backgroundColor: string; floorColor: string; floorFollowsBackground: boolean; widthM: number; heightM: number; depthM: number; curveRadiusM: number };
@@ -56,7 +58,7 @@ export function makePortraitScene(): SceneDocument {
   const scene:SceneDocument = {
     schemaVersion:2,id:'portrait-01',name:'Portrait study',units:'m',catalogVersion:'generic-equipment-1',createdAt:'2026-09-30T00:00:00Z',updatedAt:'2026-09-30T00:00:00Z',
     camera:{id:'camera-01',transform:{positionM:cam,quaternion:lookAt(cam,[0,1.22,0])},sensorWidthMm:36,sensorHeightMm:24,focalLengthMm:50,fNumber:4,shutterSeconds:1/125,iso:200,whiteBalanceK:5600,exposureCompEv:0},
-    model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',hairStyle:'short',hairColor:'#201916'},
+    model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',skin:defaultSkin(),hairStyle:'short',hairColor:'#201916'},
     lights:[{id:'light-key',name:'Key light',enabled:true,fixtureId:'generic-led-200',transform:{positionM:light,quaternion:lookAt(light,[0,1.4,0])},source:{mode:'continuous',dimmerPercent:70,temperatureK:5600},modifier:makeModifier('softbox','120x120')}],
     environment:{backgroundColor:'#887b6f',floorColor:'#887b6f',floorFollowsBackground:true,widthM:8,heightM:5,depthM:10,curveRadiusM:1},
     render:{quality:'balanced',previewMode:'capture',seed:42},
@@ -138,5 +140,17 @@ export function migrateScene(input:unknown):SceneDocument {
     if(!Number.isFinite(m.widthM)||!Number.isFinite(m.heightM)||m.widthM<=0||m.heightM<=0)throw new Error('Invalid aperture');
     return {...l,modifier:{...next,widthM:m.widthM,heightM:m.heightM,sizeId:m.sizeId}};
   });
+  s.model.skin=resolveSkin(s.model.skin,s.model.skinColor);
   s.schemaVersion=2;s.catalogVersion='generic-equipment-1';return s;
+}
+
+/** Fixed framing and exposure; subsequent A/B switches replace only the key modifier. */
+export function makeMaterialTestScene():SceneDocument {
+  const s=makeCatchlightScene();s.name='Portrait Material Test';
+  s.lights[0]=placeLight(s,{...s.lights[0],modifier:makeModifier('beauty-dish','55')},{horizontal:-30,vertical:20,distance:1.15});
+  s.render.quality='Standard';return s;
+}
+export function compareSkinEquipment(s:SceneDocument,equipment:'beauty-dish'|'softbox'):SceneDocument {
+  if(!s.lights.length)return s;
+  return updateLight(s,s.lights[0].id,{modifier:makeModifier(equipment,equipment==='softbox'?'120x120':'55')});
 }
