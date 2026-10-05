@@ -14,7 +14,7 @@ import { updateCorneaEmitter } from './cornea';
 import { QUALITY,qualityName } from './quality';
 
 export interface FrameStats { gpuMs?:number|null; gpuSupported?:boolean; ms:number; triangles:number; calls:number; samples:number; frames:number; }
-interface Callbacks { transform:(selection:Selection,t:Transform,restoreAim?:LightSpec['aiming'])=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
+interface Callbacks { begin?:()=>void; end?:()=>void; transform:(selection:Selection,t:Transform,restoreAim?:LightSpec['aiming'])=>void; select:(s:Selection)=>void; stats:(s:FrameStats)=>void; error:(s:string)=>void; }
 export class StudioRenderer {
   private renderer:T.WebGLRenderer;
   private gpu:GpuTimer;
@@ -94,8 +94,8 @@ export class StudioRenderer {
     this.listen(host.ownerDocument,'pointerdown',()=>this.setInteracting(true));
     this.listen(host.ownerDocument,'pointerup',()=>this.setInteracting(false));
     this.listen(host.ownerDocument,'pointercancel',()=>this.setInteracting(false));
-    this.gizmo.addEventListener('mouseDown',()=>{this.dragBefore=structuredClone(getTransform(this.document,this.selected));const light=this.document.lights.find(l=>l.id===this.selected);this.dragBeforeAim=light?structuredClone(light.aiming??{target:'face',auto:false}):undefined;});
-    this.gizmo.addEventListener('mouseUp',()=>{this.dragBefore=null;});
+    this.gizmo.addEventListener('mouseDown',()=>{this.callbacks.begin?.();this.dragBefore=structuredClone(getTransform(this.document,this.selected));const light=this.document.lights.find(l=>l.id===this.selected);this.dragBeforeAim=light?structuredClone(light.aiming??{target:'face',auto:false}):undefined;});
+    this.gizmo.addEventListener('mouseUp',()=>{this.dragBefore=null;this.callbacks.end?.();});
     this.gizmo.addEventListener('objectChange',()=>{
       const o=this.object(this.selected);if(!o)return;if(this.gizmo.getMode()==='translate'){o.position.x=T.MathUtils.clamp(o.position.x,-4,4);o.position.y=T.MathUtils.clamp(o.position.y,this.selected==='model'?0:.25,4);o.position.z=T.MathUtils.clamp(o.position.z,-3,6);}
       this.callbacks.transform(this.selected,{positionM:o.position.toArray(),quaternion:o.quaternion.toArray()});
@@ -164,7 +164,7 @@ export class StudioRenderer {
       rig.root.updateMatrixWorld(true);
     }
     for(const id of ['camera','model'] as const){const t=getTransform(s,id),o=this.object(id)!;o.position.fromArray(t.positionM);o.quaternion.fromArray(t.quaternion);}
-    this.human.root.scale.setScalar(s.model.heightCm/175);this.human.skinSystem.update(resolveSkin(s.model.skin,s.model.skinColor),qualityName(s.render.quality));
+    this.human.update(s.model);this.human.skinSystem.update(resolveSkin(s.model.skin,s.model.skinColor),qualityName(s.render.quality));
     this.shot.position.copy(this.cameraRig.position);this.shot.quaternion.copy(this.cameraRig.quaternion);this.shot.fov=verticalFov(s.camera.focalLengthMm);this.shot.updateProjectionMatrix();
     this.backdropMaterial.color.set(s.environment.backgroundColor);
     if(visualChanged||this.frames===0){
@@ -181,7 +181,7 @@ export class StudioRenderer {
   }
   mode(m:'translate'|'rotate'){this.gizmo.setMode(m);this.invalidateStudio();}
   rotationSnap(degrees:number){this.gizmo.setRotationSnap(snapRadians(degrees));this.invalidateStudio();}
-  cancelDrag(){if(this.dragBefore){const before=this.dragBefore;this.gizmo.reset();this.callbacks.transform(this.selected,before,this.dragBeforeAim);this.dragBefore=null;}this.orbit.enabled=true;}
+  cancelDrag(){if(this.dragBefore){const before=this.dragBefore;this.gizmo.reset();this.callbacks.transform(this.selected,before,this.dragBeforeAim);this.dragBefore=null;this.callbacks.end?.();}this.orbit.enabled=true;}
   setView(view:StudioView){
     this.view=view;this.editor=view==='Perspective'?this.perspective:this.orthographic;
     this.editor.up.set(0,view==='Top'?0:1,view==='Top'?-1:0);
@@ -227,7 +227,7 @@ export class StudioRenderer {
     // Corneal reflections use all enabled emitters, once each, after the opaque sum.
     // Layer 1 keeps the transparent cap out of equal-depth multi-light accumulation.
     const mask=camera.layers.mask;camera.layers.set(1);this.renderer.shadowMap.enabled=false;
-    for(const light of enabled){updateCorneaEmitter(this.human.cornea,light,this.document.camera,kelvin(light.source.temperatureK),this.human.root.matrixWorld);this.renderer.render(this.scene,camera);}
+    for(const light of enabled){updateCorneaEmitter(this.human.cornea,light,this.document.camera,kelvin(light.source.temperatureK),this.human.head.matrixWorld);this.renderer.render(this.scene,camera);}
     camera.layers.mask=mask;this.renderer.shadowMap.enabled=true;
     this.rigs.forEach(r=>{r.root.visible=true;r.stand.visible=true;});this.cameraRig.visible=true;
   }
@@ -281,7 +281,7 @@ export class StudioRenderer {
         this.inspectionCamera.copy(this.shot);
         if(this.inspect>1){
           // Sensor crop about the projected face. The capture camera is never mutated.
-          this.shot.updateMatrixWorld();const face=new T.Vector3(0,1.617,.09).applyMatrix4(this.human.root.matrixWorld).project(this.shot);
+          this.shot.updateMatrixWorld();const face=new T.Vector3(0,1.617,.09).applyMatrix4(this.human.head.matrixWorld).project(this.shot);
           const zoom=this.inspect;this.inspectionCamera.setViewOffset(1500,1000,(face.x+1)*750-750/zoom,(1-face.y)*500-500/zoom,1500/zoom,1000/zoom);
         }else this.inspectionCamera.clearViewOffset();
         this.renderLighting(this.sampleTarget,this.inspectionCamera,false,jitter);

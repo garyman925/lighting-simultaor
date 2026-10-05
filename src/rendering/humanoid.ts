@@ -1,3 +1,6 @@
+import { makeHair } from './hair';
+import { bodyScaleAt, HEAD_PIVOT, headRotation, poseRotation } from '../domain/model';
+import type { ModelSpec } from '../domain/model';
 import { makeSkinMaterial } from './skin';
 import { skinMask } from '../domain/skin';
 import type { SkinRegion } from '../domain/skin';
@@ -8,10 +11,15 @@ import { makeCorneaMaterial } from './cornea';
 /** Original procedural study mannequin: no downloaded or unlicensed character assets. */
 export function makeHumanoid() {
   const root=new T.Group(); root.name='Humanoid';
+  const body=new T.Group(),headPivot=new T.Group(),head=new T.Group();
+  body.name='Body pose';head.name='Head coordinates';headPivot.name='Neck pivot';
+  root.add(body);body.add(headPivot);headPivot.position.fromArray(HEAD_PIVOT);head.position.y=-HEAD_PIVOT[1];headPivot.add(head);
+  let parent:T.Group=body;
+  const bodyMeshes:T.Mesh[]=[];
   const skinSystem=makeSkinMaterial(),skin=skinSystem.material;
   const cornea=makeCorneaMaterial();
   const lips=skin;
-  const hair=new T.MeshStandardMaterial({color:'#241c17',roughness:.72});
+  const hairSystem=makeHair(),hair=hairSystem.material;
   const shirt=new T.MeshStandardMaterial({color:'#9aa5a2',roughness:.92});
   const trousers=new T.MeshStandardMaterial({color:'#3c4548',roughness:.88});
   const shoe=new T.MeshStandardMaterial({color:'#23272a',roughness:.52});
@@ -20,7 +28,7 @@ export function makeHumanoid() {
   const pupil=new T.MeshStandardMaterial({color:'#060504',roughness:1});
   const geometries:T.BufferGeometry[]=[];
   function mesh(g:T.BufferGeometry,m:T.Material,pos:number[],scale=[1,1,1],region:SkinRegion='skin') {
-    g.normalizeNormals();geometries.push(g); const o=new T.Mesh(g,m); o.position.set(pos[0],pos[1],pos[2]);o.scale.set(scale[0],scale[1],scale[2]);o.castShadow=true;o.receiveShadow=true;root.add(o);
+    g.normalizeNormals();geometries.push(g); const o=new T.Mesh(g,m); o.position.set(pos[0],pos[1],pos[2]);o.scale.set(scale[0],scale[1],scale[2]);o.castShadow=true;o.receiveShadow=true;parent.add(o);if(parent===body)bodyMeshes.push(o);
     if(m===skin){
       o.updateMatrix();const a=g.getAttribute('position'),mask:number[]=[];
       for(let i=0;i<a.count;i++){const v=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(o.matrix);mask.push(...skinMask(v.x,v.y,v.z,region));}
@@ -34,14 +42,15 @@ export function makeHumanoid() {
   }
   // Feet, legs and a softly shaped torso, with a neutral fitted studio outfit.
   for(const side of [-1,1]) {
-    ellipsoid([side*.102,.068,.045],[.078,.062,.16],shoe);
+    ellipsoid([side*.102,.062,.045],[.078,.062,.16],shoe);
     limb(new T.Vector3(side*.1,.16,0),new T.Vector3(side*.10,.49,-.015),.065,.079,trousers);
     ellipsoid([side*.1,.5,-.015],[.083,.088,.078],trousers);
     limb(new T.Vector3(side*.1,.51,-.015),new T.Vector3(side*.09,.89,0),.083,.103,trousers);
   }
   ellipsoid([0,.91,0],[.19,.14,.11],trousers);
   const pts=[new T.Vector2(.16,.89),new T.Vector2(.169,.94),new T.Vector2(.15,1.05),new T.Vector2(.176,1.17),new T.Vector2(.215,1.30),new T.Vector2(.19,1.365),new T.Vector2(.085,1.405)];
-  mesh(new T.LatheGeometry(pts,48),shirt,[0,0,0],[1,1,.64]);
+  const torsoCurve=new T.SplineCurve(pts);
+  mesh(new T.LatheGeometry(torsoCurve.getPoints(48),48),shirt,[0,0,0],[1,1,.64]);
   ellipsoid([0,1.42,0],[.065,.11,.063]);
   for(const side of [-1,1]) {
     ellipsoid([side*.206,1.325,0],[.076,.085,.078],shirt);
@@ -50,22 +59,29 @@ export function makeHumanoid() {
     limb(elbow,wrist,.047,.027,skin);ellipsoid([side*.31,.79,.045],[.035,.076,.025]);
     for(let f=0;f<4;f++) ellipsoid([side*(.289+f*.014),.726+(f===0?.01:0),.047],[.008,.04,.009]);
     const thumb=ellipsoid([side*.266,.783,.066],[.013,.038,.014]);thumb.rotation.z=side*-.4;
-    ellipsoid([side*.095,1.58,-.008],[.021,.04,.02],skin,'ear');
+
+  }
+  parent=head;
+  for(const side of [-1,1]){
+    ellipsoid([side*.098,1.58,-.004],[.018,.036,.013],skin,'ear').name='Ear concha';
+    const points=Array.from({length:41},(_,i)=>{const a=i/40*Math.PI*2;return new T.Vector3(side*(.100+.016*Math.sin(a)),1.58+.034*Math.cos(a),.006+.004*Math.sin(a));});
+    mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),48,.0038,8,true),skin,[0,0,0],[1,1,1],'ear').name='Ear helix';
+    ellipsoid([side*.098,1.552,.003],[.012,.014,.010],skin,'ear').name='Ear lobe';
   }
   // A single smooth face surface with nose bridge/tip, chin, orbital hollows and cheek bones.
   const faceG=new T.SphereGeometry(1,160,128),a=faceG.getAttribute('position');
   const gauss=(v:number,s:number)=>Math.exp(-v*v/(s*s));
   for(let i=0;i<a.count;i++) {
-    const sx=a.getX(i),sy=a.getY(i),sz=a.getZ(i);let x=sx*.091*(sy<-.2?1+(sy+.2)*.2:1),y=sy*.158+(sy<-.2?.05*((-sy-.2)/.8)**2:0),z=sz*.101;
+    const sx=a.getX(i),sy=a.getY(i),sz=a.getZ(i);let x=sx*.091*(sy<-.2?1+(sy+.2)*.13:1),y=sy*.164+(sy<-.2?.048*((-sy-.2)/.8)**2:0),z=sz*.101;
     if(sz>0){
       const frontal=Math.pow(sz,3);
-      z+=frontal*(.022*gauss(x,.023)*gauss(y-.013,.062)+.028*gauss(x,.021)*gauss(y+.008,.025));
+      z+=frontal*(.022*gauss(x,.023)*gauss(y-.013,.062)+.032*gauss(x,.019)*gauss(y+.008,.023)+.011*(gauss(x-.018,.010)+gauss(x+.018,.010))*gauss(y+.026,.012));
       z-=frontal*.030*(gauss(x-.033,.019)+gauss(x+.033,.019))*gauss(y-.031,.012);
       z+=frontal*.012*(gauss(x-.04,.03)+gauss(x+.04,.03))*gauss(y-.055,.012);
       z+=frontal*.018*(gauss(x-.060,.025)+gauss(x+.060,.025))*gauss(y+.004,.027);
       z-=frontal*.007*(gauss(x-.061,.028)+gauss(x+.061,.028))*gauss(y+.049,.034);
       z+=frontal*.009*gauss(x,.036)*gauss(y+.058,.022);
-      z+=frontal*.013*gauss(x,.046)*gauss(y+.1,.026);
+      z+=frontal*.017*gauss(x,.039)*gauss(y+.1,.025);
     }
     a.setXYZ(i,x,y,z);
   }
@@ -95,13 +111,13 @@ export function makeHumanoid() {
     for(let ring=0;ring<=12;ring++)for(let j=0;j<=96;j++){
       const angle=j/96*Math.PI*2,k=ring/12;
       const dx=T.MathUtils.lerp(.0128,.025,k)*Math.cos(angle),dy=T.MathUtils.lerp(Math.sin(angle)>0?.0065:.0048,.021,k)*Math.sin(angle);
-      const x=eyeX+dx,y=eyeY+dy-1.586,sy=y/.158,sx=x/.091,sz=Math.sqrt(Math.max(0,1-sx*sx-sy*sy)),frontal=sz**3;
-      let z=sz*.101+frontal*(.022*gauss(x,.023)*gauss(y-.013,.062)+.028*gauss(x,.021)*gauss(y+.008,.025));
+      const x=eyeX+dx,y=eyeY+dy-1.586,sy=y/.164,sx=x/.091,sz=Math.sqrt(Math.max(0,1-sx*sx-sy*sy)),frontal=sz**3;
+      let z=sz*.101+frontal*(.022*gauss(x,.023)*gauss(y-.013,.062)+.032*gauss(x,.019)*gauss(y+.008,.023)+.011*(gauss(x-.018,.010)+gauss(x+.018,.010))*gauss(y+.026,.012));
       z-=frontal*.030*(gauss(x-.033,.019)+gauss(x+.033,.019))*gauss(y-.031,.012);
       z+=frontal*.012*(gauss(x-.04,.03)+gauss(x+.04,.03))*gauss(y-.055,.012);
       z+=frontal*.018*(gauss(x-.060,.025)+gauss(x+.060,.025))*gauss(y+.004,.027);
       z-=frontal*.007*(gauss(x-.061,.028)+gauss(x+.061,.028))*gauss(y+.049,.034);
-      z+=frontal*.009*gauss(x,.036)*gauss(y+.058,.022)+frontal*.013*gauss(x,.046)*gauss(y+.1,.026);
+      z+=frontal*.009*gauss(x,.036)*gauss(y+.058,.022)+frontal*.017*gauss(x,.039)*gauss(y+.1,.025);
       const innerX=.0128*Math.cos(angle),innerY=(Math.sin(angle)>0?.0065:.0048)*Math.sin(angle);
       const innerZ=eyeZ+Math.sqrt(.013**2-innerX*innerX-innerY*innerY)+.0004;
       // Smoothly join the eyelid margin to the face, avoiding a hard max/sphere seam.
@@ -115,13 +131,44 @@ export function makeHumanoid() {
     const lids=mesh(lidG,skin,[0,0,0]);lids.name='Orbital eyelid skin';lids.castShadow=false;
     const brow=ellipsoid([side*.038,1.643,.094],[.024,.003,.004],hair);brow.rotation.z=side*-.09;
   }
-  ellipsoid([-.011,1.535,.104],[.017,.0035,.005],lips,'lip');
-  ellipsoid([.011,1.535,.104],[.017,.0035,.005],lips,'lip');
-  ellipsoid([0,1.528,.104],[.026,.0045,.006],lips,'lip');
-  // Close-cropped cap, with an asymmetric swept crown.
-  mesh(new T.SphereGeometry(1,48,32,0,Math.PI*2,0,Math.PI*.43),hair,[0,1.594,-.008],[.095,.16,.104]);
-  for(let i=0;i<8;i++) {
-    const strand=ellipsoid([-.057+i*.016,1.728+Math.sin(i*.5)*.008,-.003],[.025,.013,.079],hair);strand.rotation.y=-.3;
+
+  // Cupid bow and lower lip: continuous tapered ribbons instead of overlapping balls.
+  for(const upper of [true,false]){
+    const v:number[]=[],ix:number[]=[];
+    for(let j=0;j<=8;j++)for(let i=0;i<=48;i++){
+      const u=i/48*2-1,k=j/8,taper=Math.max(.015,1-u*u);
+      const seam=1.532+.0015*Math.cos(u*Math.PI)*taper;
+      const border=upper?( .003+.002*Math.exp(-(((Math.abs(u)-.30)/.20)**2)))*taper:-.005*taper;
+      v.push(u*.027,seam+border*k,.102+.006*taper*Math.sin(Math.PI*(.12+.75*k)));
+      if(j<8&&i<48){const n=j*49+i;ix.push(...(upper?[n,n+1,n+49,n+1,n+50,n+49]:[n,n+49,n+1,n+1,n+49,n+50]));}
+    }
+    const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();
+    mesh(g,lips,[0,0,0],[1,1,1],'lip').name=upper?'Upper lip':'Lower lip';
   }
-  return {root,skin,skinSystem,cornea,dispose:()=>{geometries.forEach(g=>g.dispose());[skin,hair,shirt,trousers,shoe,white,iris,pupil,cornea].forEach(m=>m.dispose());}};
+  for(const side of [-1,1]){
+    // Recessed nostril rims provide an alar plane without painted dark disks.
+    const ala=ellipsoid([side*.015,1.561,.126],[.010,.006,.009]);ala.name='Nasal ala';
+  }
+  head.add(hairSystem.root);
+  // Rest-space vertices are retained once. A body-type edit deforms only body buffers;
+  // height/pose/head/color edits only update transforms or existing materials.
+  const rest=bodyMeshes.map(o=>({o,position:o.position.clone(),vertices:Float32Array.from(o.geometry.getAttribute('position').array)}));
+  let bodyKey='';
+  function update(model:ModelSpec){
+    root.scale.setScalar(model.heightCm/175);body.rotation.y=poseRotation(model);headPivot.rotation.copy(headRotation(model));
+    hairSystem.update(model.hairStyle,model.hairColor);
+    if(bodyKey!==model.bodyPreset){
+      bodyKey=model.bodyPreset;
+      for(const {o,position,vertices} of rest){
+        o.position.copy(position);o.updateMatrix();const inverse=o.matrix.clone().invert(),p=o.geometry.getAttribute('position');
+        for(let i=0;i<p.count;i++){
+          const v=new T.Vector3().fromArray(vertices,i*3).applyMatrix4(o.matrix),f=bodyScaleAt(v.y,model);
+          v.x*=f.x;v.z*=f.z;v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);
+        }
+        p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();o.geometry.computeBoundingBox();
+      }
+    }
+    root.updateMatrixWorld(true);
+  }
+  return {root,head,body,headPivot,hair:hairSystem,update,skin,skinSystem,cornea,dispose:()=>{geometries.forEach(g=>g.dispose());hairSystem.dispose();[skin,shirt,trousers,shoe,white,iris,pupil,cornea].forEach(m=>m.dispose());}};
 }

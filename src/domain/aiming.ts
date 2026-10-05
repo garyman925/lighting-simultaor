@@ -1,3 +1,4 @@
+import { modelLandmark } from './model';
 import { Quaternion, Vector3 } from 'three';
 import { lookAt } from './scene';
 import type { LightSpec, SceneDocument, Vec3 } from './scene';
@@ -11,10 +12,7 @@ const rad = Math.PI / 180;
 
 /** Landmarks in the procedural model's local coordinates; follow scale and rotation. */
 export function aimPoint(scene: SceneDocument, target: AimTarget = 'face'): Vec3 {
-  const local: Vec3 = target === 'face' ? [0, 1.60, .10] : target === 'chest' ? [0, 1.28, .10] : [0, .875, 0];
-  return new Vector3(...local).multiplyScalar(scene.model.heightCm / 175)
-    .applyQuaternion(new Quaternion(...scene.model.transform.quaternion))
-    .add(new Vector3(...scene.model.transform.positionM)).toArray();
+  return modelLandmark(scene.model,target);
 }
 
 /** Horizontal ground-plane basis. Camera roll and editor orbit do not change photography sides. */

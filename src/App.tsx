@@ -1,5 +1,9 @@
-import { SkinControls } from './components/SkinControls';
-import { resolveSkin } from './domain/skin';
+import { ProjectControls } from './components/ProjectControls';
+import { ProjectController } from './project/controller';
+import { IndexedDBProjects } from './project/repository';
+import { serializeProject } from './project/schema';
+import { ModelControls } from './components/ModelControls';
+import { makeModelTestScene } from './domain/scene';
 import { makeMaterialTestScene,compareSkinEquipment } from './domain/scene';
 import { applyLightingPreset, lightAngles, syncAutoAim } from './domain/aiming';
 import { AimingControls } from './components/AimingControls';
@@ -8,7 +12,7 @@ import { makeModifier, modifierLabel } from './domain/equipment';
 import { qualityName } from './rendering/quality';
 import { makeCatchlightScene, makeEquipmentScene } from './domain/scene';
 import type { LightingPreset } from './domain/scene';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Aperture, ArrowUpRight, Box, Camera, Check, Copy, Plus, Trash2, CircleHelp, Crosshair, Download, Focus, Lightbulb, Maximize2, Move3D, Palette, RotateCcw, Rotate3D, SlidersHorizontal, Sun, UserRound } from 'lucide-react';
 import { eulerToQuat, getTransform, lookAt, makePortraitScene, makeThreeLightScene, addLight, duplicateLight, deleteLight, updateLight as patchLight, hasStrobe, quatToEuler, withTransform } from './domain/scene';
 import type { SceneDocument, Selection, Transform, Vec3, LightSpec, StudioView } from './domain/scene';
@@ -20,7 +24,11 @@ const swatches=['#887b6f','#e8e2d8','#536b79','#444b48','#aa6f57','#26282c'];
 
 const defaultStats:FrameStats={ms:0,triangles:0,calls:0,samples:9,frames:0};
 export default function App(){
-  const [scene,setScene]=useState(makePortraitScene),[selected,setSelected]=useState<Selection>('light-key'),[mode,setMode]=useState<'translate'|'rotate'>('translate');
+  const [controller]=useState(()=>new ProjectController(new IndexedDBProjects()));
+  const projectState=useSyncExternalStore(controller.subscribe,controller.getSnapshot);
+  const scene=projectState.project.scene,setScene=controller.setScene;
+  useEffect(()=>{void controller.initialize();},[controller]);
+  const [selected,setSelected]=useState<Selection>('light-key'),[mode,setMode]=useState<'translate'|'rotate'>('translate');
   const [stats,setStats]=useState(defaultStats),[error,setError]=useState(''),[help,setHelp]=useState(false),[toast,setToast]=useState(''),[hex,setHex]=useState(scene.environment.backgroundColor);
   const [exportJson,setExportJson]=useState('');
   const [chooser,setChooser]=useState(false),[newModifier,setNewModifier]=useState(()=>makeModifier('beauty-dish','55'));
@@ -33,13 +41,17 @@ export default function App(){
   const strobe=hasStrobe(scene);
   function switchView(v:StudioView){setView(v);engine.current?.setView(v);}
   const host=useRef<HTMLDivElement>(null),studio=useRef<HTMLDivElement>(null),preview=useRef<HTMLDivElement>(null),engine=useRef<StudioRenderer|null>(null);
+  useEffect(()=>{setSelected('model');setChooser(false);},[projectState.boundary]);
+  useEffect(()=>{if(selected.startsWith('light-')&&!scene.lights.some(l=>l.id===selected))setSelected('model');},[scene,selected]);
+  const gesture=useRef<HTMLElement|null>(null);
+  useEffect(()=>{const end=()=>{if(gesture.current){controller.end(gesture.current);gesture.current=null;}};window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);window.addEventListener('blur',end);return()=>{window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);window.removeEventListener('blur',end);};},[controller]);
   const current=useRef(scene);current.current=scene;
   const selection=useRef(selected);selection.current=selected;
   function change(fn:(s:SceneDocument)=>SceneDocument){setScene(s=>syncAutoAim(fn(s)));}
   function transform(s:Selection,t:Transform,rotation=false){change(old=>withTransform(old,s,t,rotation));}
   useEffect(()=>{
     if(!host.current||!studio.current||!preview.current)return;
-    try{engine.current=new StudioRenderer(host.current,studio.current,preview.current,current.current,{transform:(id,t,restoreAim)=>setScene(old=>withTransform(restoreAim&&id!=='model'&&id!=='camera'?patchLight(old,id,{aiming:restoreAim}):old,id,t,!restoreAim&&modeRef.current==='rotate')),select:setSelected,stats:setStats,error:setError});}
+    try{engine.current=new StudioRenderer(host.current,studio.current,preview.current,current.current,{begin:()=>controller.begin('gizmo'),end:()=>controller.end('gizmo'),transform:(id,t,restoreAim)=>setScene(old=>withTransform(restoreAim&&id!=='model'&&id!=='camera'?patchLight(old,id,{aiming:restoreAim}):old,id,t,!restoreAim&&modeRef.current==='rotate')),select:setSelected,stats:setStats,error:setError});}
     catch(e){setError(`無法建立 3D 預覽：${e instanceof Error?e.message:String(e)}。請使用支援 WebGL 2 的瀏覽器。`);}
     return()=>{engine.current?.dispose();engine.current=null;};
   },[]);
@@ -50,7 +62,7 @@ export default function App(){
   useEffect(()=>{engine.current?.setInspection(inspect);},[inspect]);
   useEffect(()=>{setHex(scene.environment.backgroundColor);},[scene.environment.backgroundColor]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),2400);return()=>clearTimeout(timer);},[toast]);
-  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.target instanceof HTMLElement&&['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName))return;if(e.key.toLowerCase()==='w')setMode('translate');if(e.key.toLowerCase()==='e')setMode('rotate');if(e.key==='Escape'){engine.current?.cancelDrag();setHelp(false);setChooser(false);}if(e.key.toLowerCase()==='f')engine.current?.resetView();};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
+  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.target instanceof HTMLElement&&(e.target.isContentEditable||['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)))return;if(e.key.toLowerCase()==='w')setMode('translate');if(e.key.toLowerCase()==='e')setMode('rotate');if(e.key==='Escape'){engine.current?.cancelDrag();setHelp(false);setChooser(false);}if(e.key.toLowerCase()==='f')engine.current?.resetView();};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
   const t=getTransform(scene,selected),angles=quatToEuler(t.quaternion);
   const dist=light?lightAngles(scene,light).distance:0;
   function updateCamera(p:Partial<SceneDocument['camera']>){change(s=>({...s,camera:{...s.camera,...p}}));}
@@ -62,12 +74,18 @@ export default function App(){
   function setBackground(color:string){if(!/^#[\da-f]{6}$/i.test(color))return;change(s=>({...s,environment:{...s.environment,backgroundColor:color,floorColor:color}}));}
   function aim(){const p=getTransform(scene,selected).positionM;const target:Vec3=[scene.model.transform.positionM[0],scene.model.transform.positionM[1]+1.4*scene.model.heightCm/175,scene.model.transform.positionM[2]];if(Math.hypot(...p.map((n,i)=>n-target[i]))<.1){setToast('物件太接近目標，請先移開。');return;}transform(selected,{...t,quaternion:lookAt(p,target)});}
   function reset(){preset();}
-  function exportScene(){setExportJson(JSON.stringify({...scene,updatedAt:new Date().toISOString()},null,2));}
-  function downloadScene(){const url=URL.createObjectURL(new Blob([exportJson],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='portrait-lighting.scene.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setToast('已要求瀏覽器下載；也可直接複製 JSON。');}
-  return <div className="app-shell">
-    <header className="app-header"><div className="brand"><div className="brand-icon"><Aperture size={23}/></div><strong>LUMA<span>STUDIO</span></strong><span className="prototype">PORTRAIT LAB 04B</span></div><div className="project-name"><span className="project-dot"/>{scene.name}<span className="slash">/</span><span>Untitled session</span></div><div className="header-actions"><button onClick={()=>setHelp(!help)} aria-label="操作說明"><CircleHelp size={17}/></button><button onClick={()=>preset(true)} className="reset">Three-Light Preset</button><button onClick={reset} className="reset"><RotateCcw size={14}/>Reset Scene</button><button onClick={exportScene} className="export"><Download size={14}/>Export scene</button></div></header>
+  function exportScene(){setExportJson(serializeProject(controller.getSnapshot().project));}
+  function downloadScene(){const url=URL.createObjectURL(new Blob([exportJson],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='studio-project.luma.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setToast('已要求瀏覽器下載；也可直接複製 JSON。');}
+  return <div className="app-shell"
+    onPointerDownCapture={e=>{if(e.target instanceof HTMLInputElement&&['range','color'].includes(e.target.type)){controller.begin(e.target);gesture.current=e.target;}}}
+    onFocusCapture={e=>{if(e.target instanceof HTMLTextAreaElement||e.target instanceof HTMLInputElement&&!['range','checkbox','file','color'].includes(e.target.type))controller.begin(e.target);}}
+    onBlurCapture={e=>controller.end(e.target)}
+    onKeyDownCapture={e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='range'&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key))controller.begin(e.target);}}
+    onKeyUpCapture={e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='range')controller.end(e.target);}}>
+    <header className="app-header"><div className="brand"><div className="brand-icon"><Aperture size={23}/></div><strong>LUMA<span>STUDIO</span></strong><span className="prototype">PORTRAIT LAB 05A</span></div><div className="project-name"><span className="project-dot"/>{scene.name}<span className="slash">/</span><span>Project workspace</span></div><div className="header-actions"><button onClick={()=>setHelp(!help)} aria-label="操作說明"><CircleHelp size={17}/></button><button onClick={()=>preset(true)} className="reset">Three-Light Preset</button><button onClick={reset} className="reset"><RotateCcw size={14}/>Reset Scene</button><button onClick={exportScene} className="export"><Download size={14}/>Export JSON</button></div></header>
+    <ProjectControls controller={controller}/>
     <div className="workspace-heading"><div><span className="eyebrow">YOUR LIGHTING WORKSPACE</span><h1>Shape the light.</h1></div><p>移動燈光，探索每一種可能。<span><i/> LIVE CAMERA PREVIEW</span></p></div>
-    <div className="equipment-presets" role="group" aria-label="Lighting comparison presets"><span>LIGHTING STUDIES</span><button onClick={()=>{setScene(makeMaterialTestScene());setSelected('model');setInspect(1);}}>Portrait Material Test</button><button onClick={()=>{setScene(makeCatchlightScene());setSelected('light-key');setInspect(3);setToast('Catchlight Test · Fixed camera / model / exposure');}}>Catchlight Test</button>{([['soft','Soft Portrait'],['beauty','Beauty Portrait'],['dramatic','Dramatic Strip / Rim']] as [LightingPreset,string][]).map(([id,label])=><button key={id} onClick={()=>{const next=makeEquipmentScene(id);setScene(s=>applyLightingPreset(s,next));setSelected('light-key');setToast(`${label} · Camera / model / exposure preserved`);}}>{label}</button>)}</div>
+    <div className="equipment-presets" role="group" aria-label="Lighting comparison presets"><span>LIGHTING STUDIES</span><button onClick={()=>{setScene(makeModelTestScene());setSelected('model');setInspect(1);}}>Portrait Model Test</button><button onClick={()=>{setScene(makeMaterialTestScene());setSelected('model');setInspect(1);}}>Portrait Material Test</button><button onClick={()=>{setScene(makeCatchlightScene());setSelected('light-key');setInspect(3);setToast('Catchlight Test · Fixed camera / model / exposure');}}>Catchlight Test</button>{([['soft','Soft Portrait'],['beauty','Beauty Portrait'],['dramatic','Dramatic Strip / Rim']] as [LightingPreset,string][]).map(([id,label])=><button key={id} onClick={()=>{const next=makeEquipmentScene(id);setScene(s=>applyLightingPreset(s,next));setSelected('light-key');setToast(`${label} · Camera / model / exposure preserved`);}}>{label}</button>)}</div>
     <div className="equipment-presets" role="group" aria-label="Material lighting comparison"><span>MATERIAL A/B</span><button disabled={!scene.lights.length} onClick={()=>change(s=>compareSkinEquipment(s,'beauty-dish'))}>Beauty Dish 55cm</button><button disabled={!scene.lights.length} onClick={()=>change(s=>compareSkinEquipment(s,'softbox'))}>120cm Softbox</button><small>僅切換第一盞燈的發光面 · Model / Camera / Exposure / Position 保持</small></div>
     <div className="workspace">
       <div className="views-container" ref={host}>
@@ -86,7 +104,7 @@ export default function App(){
           <div className="object-list light-list">{scene.lights.map(l=><button key={l.id} aria-label={`選取 ${l.name}`} aria-pressed={selected===l.id} className={`${selected===l.id?'selected':''} ${l.enabled?'':'disabled-light'}`} onClick={()=>setSelected(l.id)}><Lightbulb size={18}/><span>{l.name}<small>{modifierLabel(l.modifier)} · {l.enabled?l.source.mode:'Disabled'}</small></span>{selected===l.id&&<span className="object-active"/>}</button>)}</div>
           {!scene.lights.length&&<p className="micro-note">No lights. Add Light 開始佈光。</p>}
         </Section>
-        {selected==='model'&&<SkinControls value={resolveSkin(scene.model.skin,scene.model.skinColor)} onChange={skin=>change(s=>({...s,model:{...s.model,skin,skinColor:skin.skinTone}}))}/>}
+        {selected==='model'&&<ModelControls scene={scene} onChange={next=>change(()=>next)}/>}
         {light&&<AimingControls key={light.id} scene={scene} light={light} onChange={updated=>updateLight(updated)}/>}
         <Section title={light?light.name:selected==='camera'?'鏡頭設定':'人物設定'} icon={light?<Sun size={18}/>:selected==='camera'?<Camera size={18}/>:<UserRound size={18}/>}>
           {light?<>
@@ -97,7 +115,7 @@ export default function App(){
             {light.source.mode==='continuous'?<Range label="Power" value={light.source.dimmerPercent} min={0} max={100} unit="%" onChange={v=>updateLight({source:{...light.source,mode:'continuous',dimmerPercent:v}})}/>:<Range label="Power EV" value={light.source.powerEv} min={-6} max={0} step={1/3} unit="EV" onChange={v=>updateLight({source:{...light.source,mode:'strobe',powerEv:v}})}/>}
             <Range label="Color temperature" value={light.source.temperatureK} min={3200} max={6500} step={100} unit="K" onChange={v=>updateLight({source:{...light.source,temperatureK:v}})}/><div className="temperature-legend"><span>Warm</span><div/><span>Cool</span></div>
             {light.modifier.equipmentId==='softbox'&&<Range label="Softbox size" value={light.modifier.widthM*100} min={30} max={180} step={5} unit="cm" onChange={v=>updateLight({modifier:{...light.modifier,sizeId:'custom',widthM:v/100,heightM:v/100}})}/>}<p className="micro-note">發光面越大，影緣越柔和。總輸出維持相同。</p>
-          </>:selected==='camera'?<><p className="micro-note">固定 full-frame。移動相機改變透視，焦距改變畫角。</p><div className="lens-presets">{[35,50,85,105].map(f=><button key={f} className={scene.camera.focalLengthMm===f?'active':''} onClick={()=>updateCamera({focalLengthMm:f})}>{f}<small>mm</small></button>)}</div></>:<><Range label="Model height" value={scene.model.heightCm} min={150} max={200} unit="cm" onChange={v=>change(s=>({...s,model:{...s.model,heightCm:v}}))}/><Range label="Model turn" value={Math.round(quatToEuler(scene.model.transform.quaternion)[1])} min={-80} max={80} unit="°" onChange={v=>transform('model',{...scene.model.transform,quaternion:eulerToQuat([0,v,0])})}/><p className="micro-note">原創 portrait head · 分層眼球與角膜。Preview Zoom 只放大檢視，不改動相機。</p></>}
+          </>:selected==='camera'?<><p className="micro-note">固定 full-frame。移動相機改變透視，焦距改變畫角。</p><div className="lens-presets">{[35,50,85,105].map(f=><button key={f} className={scene.camera.focalLengthMm===f?'active':''} onClick={()=>updateCamera({focalLengthMm:f})}>{f}<small>mm</small></button>)}</div></>:<p className="micro-note">Model Creator 控制身高、體型、髮型與姿勢。下方 Transform 控制模型的整體位置與基準方向。</p>}
         </Section>
         <Section title="Transform" badge="WORLD"><div className="transform-label">Position <small>meters</small></div><div className="xyz-fields">{['X','Y','Z'].map((axis,i)=><NumberField key={axis} label={`Position ${axis}`} value={t.positionM[i]} min={i===1?(selected==='model'?0:.25):-4} max={6} onChange={v=>{const p=[...t.positionM] as Vec3;p[i]=v;transform(selected,{...t,positionM:p});}}/>)}</div><div className="transform-label">Rotation <small>degrees</small></div><div className="xyz-fields">{['X','Y','Z'].map((axis,i)=><NumberField key={axis} label={`Rotation ${axis}`} value={angles[i]} min={-180} max={180} step={5} onChange={v=>{const r=[...angles] as Vec3;r[i]=v;transform(selected,{...t,quaternion:eulerToQuat(r)},true);}}/>)}</div><label className="snap-control">Rotation snap<select aria-label="Rotation snap" value={snap} onChange={e=>setSnap(+e.target.value)}>{[0,5,15,45].map(n=><option key={n} value={n}>{n?`${n}°`:'Off'}</option>)}</select></label>{selected==='camera'&&<button className="aim-button" onClick={aim}><Crosshair size={14}/>Aim at model<ArrowUpRight size={13}/></button>}</Section>
         <div className="inspector-note"><span className="material-dot"/>近似光影 · 薄組織透光近似，無間接反射</div>
@@ -108,7 +126,7 @@ export default function App(){
     <footer className="status-bar"><span><span className="ready-dot"/>{error?'Preview unavailable':'All changes are live'}</span><span>{light?`${light.name} → ${light.aiming?.target??'face'}`:'Studio editor'} <b>{light?`${dist.toFixed(2)} m`:''}</b><span className="sep">/</span><Focus size={12}/>{scene.camera.focalLengthMm}mm</span><span title="CPU render submission time, not GPU FPS" data-testid="render-stats">{stats.ms.toFixed(1)} ms CPU · {stats.gpuMs!=null?`${stats.gpuMs.toFixed(1)} ms GPU`:stats.gpuSupported?'GPU pending':'GPU unavailable'} · {stats.samples} shadow samples<span className="sep">/</span>WebGL 2</span></footer>
     {chooser&&<div className="modal-backdrop" onClick={()=>setChooser(false)}><div className="help-modal" role="dialog" aria-modal="true" aria-label="Add equipment" onClick={e=>e.stopPropagation()}><span className="eyebrow">EQUIPMENT LIBRARY</span><h2>Add Light</h2><p>選擇發光面與尺寸，再放進你的 Studio。</p><EquipmentControls prefix="New " value={newModifier} onChange={setNewModifier}/><div className="chooser-actions"><button className="export" onClick={newLight}><Plus size={16}/>Add to Studio</button><button onClick={()=>setChooser(false)}>Cancel</button></div></div></div>}
     {toast&&<div className="toast" role="status"><Check size={14}/>{toast}</div>}
-    {exportJson&&<div className="modal-backdrop" onClick={()=>setExportJson('')}><div className="help-modal" role="dialog" aria-modal="true" aria-label="Export scene JSON" onClick={e=>e.stopPropagation()}><span className="eyebrow">LOCAL SCENE DATA</span><h2>Export scene</h2><p>下載或複製目前場景。這個 prototype 尚未提供匯入及自動儲存。</p><textarea aria-label="Scene JSON" readOnly value={exportJson} onFocus={e=>e.target.select()} style={{width:'100%',height:230,fontSize:10,fontFamily:'monospace',background:'#131a1c',color:'#b9c6c1',padding:12,border:'1px solid #455152',borderRadius:5,resize:'vertical'}}/><div style={{display:'flex',gap:12,marginTop:15}}><button className="export" onClick={downloadScene}><Download size={14}/>下載 JSON</button><button onClick={()=>setExportJson('')}>關閉</button></div></div></div>}
+    {exportJson&&<div className="modal-backdrop" onClick={()=>setExportJson('')}><div className="help-modal" role="dialog" aria-modal="true" aria-label="Export scene JSON" onClick={e=>e.stopPropagation()}><span className="eyebrow">LOCAL SCENE DATA</span><h2>Export scene</h2><p>下載或複製完整 Project JSON。可由 Project menu 匯入為新 project。</p><textarea aria-label="Scene JSON" readOnly value={exportJson} onFocus={e=>e.target.select()} style={{width:'100%',height:230,fontSize:10,fontFamily:'monospace',background:'#131a1c',color:'#b9c6c1',padding:12,border:'1px solid #455152',borderRadius:5,resize:'vertical'}}/><div style={{display:'flex',gap:12,marginTop:15}}><button className="export" onClick={downloadScene}><Download size={14}/>下載 JSON</button><button onClick={()=>setExportJson('')}>關閉</button></div></div></div>}
     {help&&<div className="modal-backdrop" onClick={()=>setHelp(false)}><div className="help-modal" role="dialog" aria-modal="true" aria-label="操作說明" onClick={e=>e.stopPropagation()}><span className="eyebrow">GET STARTED</span><h2>你的第一個佈光實驗</h2><p>選取 Softbox，拖動紅、綠、藍軸調整位置。綠軸控制高度。按 E 切換旋轉環，或在右側輸入精確數值。</p><p>Camera Preview 永遠使用拍攝相機。Studio View 的環繞不會改變照片構圖。</p><p>改變 Softbox size、距離與 Power，觀察臉部影緣及明暗。下方可調焦距、曝光和背景。</p><p><kbd>W</kbd> 移動　<kbd>E</kbd> 旋轉　<kbd>F</kbd> 還原視角　<kbd>Esc</kbd> 取消拖動</p><button className="export" onClick={()=>setHelp(false)}>開始探索 <ArrowUpRight size={15}/></button></div></div>}
   </div>;
 }

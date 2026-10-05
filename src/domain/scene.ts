@@ -1,3 +1,5 @@
+import { updateModel } from './model';
+import type { POSES } from './model';
 import { defaultSkin,resolveSkin } from './skin';
 import type { SkinMaterialParameters } from './skin';
 import { placeLight, syncAutoAim } from './aiming';
@@ -23,7 +25,7 @@ export interface CameraSpec {
 export interface SceneDocument {
   schemaVersion: 2; id: string; name: string; units: 'm'; catalogVersion: string;
   createdAt: string; updatedAt: string;
-  model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; skin?:SkinMaterialParameters; hairStyle: string; hairColor: string };
+  model: { id: string; assetId: string; transform: Transform; heightCm: number; bodyPreset: string; skinColor: string; skin?:SkinMaterialParameters; hairStyle: string; hairColor: string; pose?:keyof typeof POSES; headYaw?:number; headPitch?:number };
   camera: CameraSpec;
   lights: LightSpec[];
   environment: { backgroundColor: string; floorColor: string; floorFollowsBackground: boolean; widthM: number; heightM: number; depthM: number; curveRadiusM: number };
@@ -58,7 +60,7 @@ export function makePortraitScene(): SceneDocument {
   const scene:SceneDocument = {
     schemaVersion:2,id:'portrait-01',name:'Portrait study',units:'m',catalogVersion:'generic-equipment-1',createdAt:'2026-09-30T00:00:00Z',updatedAt:'2026-09-30T00:00:00Z',
     camera:{id:'camera-01',transform:{positionM:cam,quaternion:lookAt(cam,[0,1.22,0])},sensorWidthMm:36,sensorHeightMm:24,focalLengthMm:50,fNumber:4,shutterSeconds:1/125,iso:200,whiteBalanceK:5600,exposureCompEv:0},
-    model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',skin:defaultSkin(),hairStyle:'short',hairColor:'#201916'},
+    model:{id:'model-01',assetId:'human-base-01',transform:{positionM:[0,0,0],quaternion:[0,0,0,1]},heightCm:175,bodyPreset:'regular',skinColor:'#BD8867',skin:defaultSkin(),hairStyle:'short',hairColor:'#201916',pose:'Front',headYaw:0,headPitch:0},
     lights:[{id:'light-key',name:'Key light',enabled:true,fixtureId:'generic-led-200',transform:{positionM:light,quaternion:lookAt(light,[0,1.4,0])},source:{mode:'continuous',dimmerPercent:70,temperatureK:5600},modifier:makeModifier('softbox','120x120')}],
     environment:{backgroundColor:'#887b6f',floorColor:'#887b6f',floorFollowsBackground:true,widthM:8,heightM:5,depthM:10,curveRadiusM:1},
     render:{quality:'balanced',previewMode:'capture',seed:42},
@@ -153,4 +155,15 @@ export function makeMaterialTestScene():SceneDocument {
 export function compareSkinEquipment(s:SceneDocument,equipment:'beauty-dish'|'softbox'):SceneDocument {
   if(!s.lights.length)return s;
   return updateLight(s,s.lights[0].id,{modifier:makeModifier(equipment,equipment==='softbox'?'120x120':'55')});
+}
+
+/** Fixed camera, exposure and source positions for pose/hair comparisons. */
+export function makeModelTestScene():SceneDocument {
+  let s=makeMaterialTestScene();s.name='Portrait Model Test';
+  const p:Vec3=[0,1.60,2.3];
+  s.camera={...s.camera,transform:{positionM:p,quaternion:lookAt(p,[0,1.54,0])},focalLengthMm:85};
+  s=addLight(s,'light-rim');
+  s.lights[1]=placeLight(s,{...s.lights[1],name:'Stripbox Rim',modifier:makeModifier('stripbox','30x120'),source:{mode:'continuous',dimmerPercent:45,temperatureK:5600}},{horizontal:135,vertical:10,distance:1.4});
+  s.lights=s.lights.map(l=>({...l,aiming:{target:'face',auto:true}}));
+  return updateModel(s,{});
 }

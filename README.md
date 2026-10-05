@@ -1,6 +1,17 @@
 # Luma Studio — Studio Lighting Simulator
 
-可執行的 **VS03.1 — Light Positioning & Aiming UX**（保留先前 editor 與七類器材）。啟動即載入 Portrait Lighting Scene：一名原創程序式 humanoid、一台 full-frame 相機、120 × 120cm Softbox 及無縫背景。無帳戶、後端或外部角色下載。
+可執行的 **VS05A — Project Save/Load, Auto Save & Undo/Redo**，保留 VS01–VS04C 的 editor、七類器材、physical catchlight、skin、Model Creator、hair 與 pose。初次啟動載入 Portrait Lighting Scene；再次開啟會恢復最後保存的 project。無帳戶、後端或外部角色下載。
+
+## Project workflow
+
+- Header 的 **Project** 開啟 New / Open / Rename / Save As、project list、Shoot Notes、JSON Export / Import。資料存在同一 browser、同一網站 origin 的 IndexedDB。
+- **Save** 或 Ctrl/Cmd+S 立即保存；停止編輯 900ms 後自動保存。Saved / Saving… / Unsaved 表示實際 transaction 狀態。切換或新建前先保存；保存失敗則留在原 project。
+- **Undo / Redo**：Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Windows Ctrl+Y。一次 slider / gizmo drag 是一次操作；文字欄位保留原生文字 undo。歷史最多 100 步；Save 不清除歷史，Open / New 建立新邊界。
+- **Export Project JSON** 是跨裝置備份；Import 一律建立新 ID，不覆寫來源。可匯入舊 `schemaVersion:1/2` scene JSON。未知版本、未知器材與破損結構會顯示錯誤；數值採白名單、有限值檢查及安全範圍修正。
+- 刪除需明確確認。Private mode、quota、DB 升級阻擋或跨 tab 儲存衝突會顯示錯誤；仍可 Export JSON。跨 tab 衝突可用 Save As 保留自己的版本。
+- 清除網站資料會刪除本機 projects；定期下載 JSON。關閉瀏覽器前以 **Saved** 為準；未完成保存時提供離頁提示。Undo history 不跨 refresh 保存。
+
+Architecture 與實測紀錄見 [VS05A verification](tests/VS05A-VERIFICATION.md)。
 
 ## 第一個實驗
 
@@ -10,7 +21,7 @@
 4. 改變 Power、Color temperature，或將燈移遠；亮度、色調與光衰減即時改變。
 5. 下方選擇 **35 / 50 / 85 / 105mm**，調整 ISO、Aperture、Shutter speed。選取 Camera 可移動及旋轉真正的拍攝相機。
 6. 點背景色票、Color Picker 或輸入 HEX；背景及地板同步更新。
-7. **Reset Scene** 回到預設。選 Model 可調身高及轉向；沒有複雜 Character Creator。
+7. **Reset Scene** 回到預設（可 Undo）。選 Model 可調身高、體型、skin、五種髮型／髮色，以及 body/head pose。
 
 Studio View 的空白處拖曳是編輯視角 Orbit；中／右鍵或 Shift + 左鍵平移、滾輪縮放，**不會移動拍攝相機**。`W` 移動、`E` 旋轉、`F` 還原編輯視角、`Esc` 取消尚未完成的拖動。輸入欄位內不攔截全域快捷鍵。
 
@@ -22,8 +33,8 @@ Studio View 的空白處拖曳是編輯視角 Orbit；中／右鍵或 Shift + �
 - 同時顯示 Studio View 和 Camera Preview，拍攝預覽不含 gizmo、grid 或拍攝相機本身。
 - 36 × 24mm full-frame、四種焦距、ISO100–6400、f/1.4–f/22、1/15–1/1000s。
 - 持續燈與閃燈曝光規則、Color Picker、Reset、預設 Portrait scene。
-- Export scene 顯示可複製 JSON 並可要求瀏覽器下載；不是雲端儲存。
-- 型別檢查、正式 build、17 個數學／場景／多燈單元測試、真實瀏覽器操作及截圖驗證。
+- Project JSON 可下載、複製、匯入；IndexedDB 本機保存與 auto-save。
+- 型別檢查、正式 build、123 個 automated tests，以及真實瀏覽器 persistence、history、JSON round-trip 驗證。
 
 ## Studio Editor 操作
 
@@ -33,7 +44,7 @@ Studio View 的空白處拖曳是編輯視角 Orbit；中／右鍵或 Shift + �
 - **Perspective** 可自由 Orbit；**Top / Front / Side** 使用 Orthographic 投影並鎖定旋轉軸向，仍可 Pan / Zoom。**Reset View / F** 還原目前視角。
 - 左鍵拖曳空白處 Orbit；中鍵、右鍵或 Shift + 左鍵 Pan；滾輪 Zoom。點燈具本體或物件列表選取，金色外框和 Move / Rotate gizmo 會同步。
 - Studio 相機、拍攝相機為不同實例；切換編輯視角不會寫入 SceneDocument，也不重算已收斂的拍攝影像。
-- 沒有三盞或其他人為燈數上限；實際上限取決於裝置。已測試十盞燈、刪除至零盞，以及空場景重新加燈。
+- Project 格式支援最多 100 盞燈；實際可用效能取決於裝置。已測試十盞燈、刪除至零盞，以及空場景重新加燈。
 - 混用持續燈與閃燈時，曝光逐燈計算；只要有啟用的閃燈，快門上限為 1/200s。關掉全部閃燈後可選更快快門。
 
 燈具使用 ID → Three.js rig 的 Map 增量更新；變更 slider 不會重建場景或光源池。固定重用九個 SpotLight 及九張 shadow maps，逐燈累加直接光至線性 HDR target，然後做時間累積與一次 tone mapping。後續燈的 pass 使用 equal-depth 加色，避免重複繪製被遮擋表面。此方法適用於本輪不透明人台；未來透明／透射材質需另行處理。Studio render cache 只在編輯視角或場景改動時更新；Preview 在八批次後停止 render loop。
@@ -46,7 +57,7 @@ Studio View 採九樣本快速顯示，因此可看到較明顯的多重影子�
 
 預設選 **continuous**，讓本輪要求的三個曝光控制都能直接看見效果；這是相對原規格「預設 strobe」的有意調整。閃燈模式內，快門不影響閃光曝光，且禁用快於 1/200s 的快門；切入閃燈時會將過快快門調至 1/200s 並提示。
 
-人物為美術人台等級，不是寫實人體。尚未做真實品牌校正、GI、皮膚 SSS、景深、noise、motion blur、白平衡 UI、Undo/Redo、save/load、自動儲存或資產匯入。頁面重整會重設場景。Power 是相對輸出，不可解讀為真實 lux 或測光表讀數。ISO、光圈與快門按規格的相對曝光公式計算。
+人物為美術人台等級，不是寫實人體。皮膚提供薄組織透光近似，並非完整物理 SSS。尚未做真實品牌校正、GI、景深、noise、motion blur、白平衡 UI 或外部人物資產匯入。Power 是相對輸出，不可解讀為真實 lux 或測光表讀數。ISO、光圈與快門按規格的相對曝光公式計算。
 
 UI 的 `ms CPU` 是 CPU 提交 render 的耗時，不是 GPU frame time 或 FPS。這輪沒有宣稱達成特定 RTX / Iris Xe 硬體效能基準。shader 首次編譯會較慢。
 
